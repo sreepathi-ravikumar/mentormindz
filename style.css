@@ -1,0 +1,65 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #fff;
+  margin: 0;
+  padding: 0;
+}
+
+.logo-img {
+  width: 150px;
+  height: auto;
+}
+
+.image-box {
+  max-width: 500px;
+  width: 90%;
+}
+
+.mentor-image {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  object-fit: cover;
+}
+
+.search-area {
+  width: 90%;
+  max-width: 600px;
+}
+
+.search-bar input {
+  font-size: 1.2rem;
+  padding: 0.75rem;
+  border-radius: 0;
+}
+
+.upload-link {
+  font-size: 0.9rem;
+  color: #0066ff;
+  text-decoration: none;
+}
+
+.upload-link:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  font-size: 0.9rem;
+  color: #666;
+  padding-bottom: 20px;
+}
+
+.footer-link {
+  color: #444;
+  text-decoration: none;
+  margin: 0 5px;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+
+
+

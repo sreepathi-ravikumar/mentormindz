@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MentorMinds - Let's Start</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="icon" type="image" href="logo_1.jpg">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: white;
+      overflow-x: hidden;
+    }
+
+    .hero-section {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      position: relative;
+      transition: margin-left 0.3s;
+      padding: 20px;
+    }
+
+    .hero-section h1 {
+      font-size: 4rem;
+      color: #888;
+    }
+
+    .btn-try {
+      background: white;
+      border: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      padding: 10px 30px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      background-image: linear-gradient(to right, #00f, #f0f);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .btn-read {
+      background-color: white;
+      color: #333 !important;
+      padding: 8px 20px;
+      font-size: 1rem;
+      font-weight: 500;
+      border: none;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-left: 10px;
+    }
+
+    .btn-read:hover {
+      background-color: #ccc;
+    }
+
+    .logo {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      display: flex;
+      align-items: center;
+    }
+
+    .logo img {
+      height: 40px;
+      margin-right: 10px;
+    }
+
+    .menu-toggle {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 1001;
+      background: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -250px;
+      width: 200px;
+      height: 100%;
+      background-color: #343a40;
+      padding-top: 30px;
+      color: white;
+      transition: left 0.3s;
+      z-index: 1000;
+    }
+
+    .sidebar.active {
+      left: 0;
+    }
+
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+    }
+
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+
+    .sidebar h4 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .content {
+      padding: 20px;
+      transition: margin-left 0.3s;
+    }
+
+    .benefits .card {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      transition: 0.3s;
+    }
+
+    .benefits .card:hover {
+      transform: scale(1.03);
+    }
+
+    footer {
+      margin-top: 40px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      text-align: center;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .hero-section h1 {
+        font-size: 2.5rem;
+      }
+
+      .logo {
+        float:right;
+        position:absolute;
+        right: -20px;
+      }
+
+      .btn-try, .btn-read {
+        display: block;
+        
+        margin: 10px auto;
+      }
+
+      .sidebar {
+        width: 100%;
+        left: -100%;
+      }
+
+      .sidebar.active {
+        left: 0;
+      }
+
+      .sidebar.active ~ .hero-section,
+      .sidebar.active ~ .content {
+        margin-left: 0;
+      }
+    }
+
+    .sidebar + .hero-section,
+    .sidebar + .content {
+      transition: margin-left 0.3s;
+    }
+
+    .sidebar.active ~ .hero-section,
+    .sidebar.active ~ .content {
+      margin-left: 200px;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar.active ~ .hero-section,
+      .sidebar.active ~ .content {
+        margin-left: 0;
+      }
+    }
+
+    @media (max-width: 300px) {
+      .hero-section h1 {
+        font-size: 2.5rem;
+      }
+
+      .logo {
+        float:right;
+        position:absolute;
+        right: -35px;
+      }
+  </style>
+</head>
+<body>
+  <div class="menu-toggle" onclick="toggleSidebar()">☰</div>
+
+  <div class="sidebar" id="sidebar">
+    <h4 style="margin-left:55px;font-size:20px;">MentorMindz</h4>
+    <span>&nbsp</span>
+    <a href="#home">Home</a>
+    <a href="#why">Why MentorMindz?</a>
+    <a href="#AI-Driven">AI-Driven</a>
+    <a href="#Smart Learn">Smart Learn</a>
+    <a href="#Mentor-Powered">Mentor-Powered</a>
+    <a href="#Built by Youth">Built by Youth</a>
+    <a href="#Real-World Use">Real-World Use</a>
+    <a href="Conclusion">Conclusion</a>
+    <a href="#benefits">Benefits</a>
+    <a href="#contact">Contact Us</a>
+    <a href="#privacy">Privacy Policy</a>
+
+    
+  </div>
+
+  <div class="hero-section" id="home">
+    <div class="logo">
+      <img src="logo.jpg" alt="logo" />
+    </div>
+    <h1>Let's Start .....</h1>
+    <a href="home.html" class="btn btn-try mt-4" target="_blank">Try now</a>
+    <a href="#why" class="btn btn-read mt-4">Read now</a>
+  </div>
+
+  <div class="content">
+    <section class="my-5 text-center" id="content">
+      <h1>Let’s Start Your MentorMindz Journey</h1>
+    </section>
+
+    <section id="why" class="my-5">
+      <h2>Why use MentorMindz?</h2>
+      <p>MentorMind is not just another educational platform — it’s a revolutionary AI-powered ecosystem designed to transform the way learners acquire knowledge, develop skills, and unlock their full potential. In a world overwhelmed by information, students and lifelong learners often struggle with direction, clarity, and personalized guidance. MentorMind bridges this gap by integrating cutting-edge artificial intelligence with tailored mentorship, creating a smarter, more focused path to success</p>
+    </section>
+
+    <section id="AI-Driven" class="my-5">
+      <h2>AI-Driven Personalization</h2>
+      <p>Unlike generic learning platforms, MentorMind uses real-time AI models to deeply understand each learner’s questions, context, and learning style. It doesn’t just give short answers — it provides in-depth explanations, examples, follow-up queries, and mentorship guidance that evolve with each interaction. This makes learning interactive, adaptive, and engaging.</p>
+    </section>
+
+    <section id="Smart Learn" class="my-5">
+      <h2>Smart Learn</h2>
+      <p>MentorMind’s turns educational content into professional, short-form or long-form videos ready for classrooms, platforms, or social media — all generated automatically from your Questions. It saves time, cost, and creative effort, making education more accessible.</p>
+    </section>
+
+    <section id="Mentor-Powered" class="my-5">
+      <h2>Mentor-Powered Interface</h2>
+      <p>What sets MentorMind apart is its simulated mentorship layer. It’s not just about giving factual answers — the platform acts like a real mentor, offering step-by-step guidance, moral support, motivational messages, and career directions. It thinks like a teacher, speaks like a coach, and acts like a guide.</p>
+    </section>
+
+    <section id="Built by Youth" class="my-5">
+      <h2>Built by Youth, for the Future</h2>
+      <p>MentorMind is special because it’s built by a visionary youth like you — with a mission not just to build apps, but to change lives. It reflects passion, creativity, and problem-solving spirit. That’s why users feel connected — not just to the technology, but to the dream behind it.</p>
+    </section>
+
+    <section id="Real-World Use" class="my-5">
+      <h2>Real-World Use Cases</h2>
+      <p>Students asking complex science doubts
+
+Teachers converting lesson plans into scripts and videos
+
+Career aspirants getting AI-powered interview training
+
+Schools integrating MentorMind as a digital teaching assistant</p>
+    </section>
+
+    <section id="Conclusion" class="my-5">
+      <h2>Conclusion: The Future of Learning Is Here</h2>
+      <p>MentorMind isn’t just a tool — it’s a movement. A smart, scalable, and humanized educational assistant that grows with the learner. It’s what the world needs now: accessible, intelligent, and creative education — powered by AI, led by passion, and made for everyone.
+</p>
+    </section>
+
+
+
+    <section id="benefits" class="my-5 benefits">
+      <h2>Benefits</h2>
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="col">
+          <div class="card p-3"><h5>Personalized Learning Experience</h5><p>MentorMind provides AI-driven answers tailored to each user’s query and level of understanding, making learning more effective and customized.</p></div>
+        </div>
+        <div class="col">
+          <div class="card p-3"><h5>24/7 Instant Help</h5><p>Users can ask questions at any time and get instant answers without waiting for a human mentor—perfect for late-night study or last-minute doubts.</p></div>
+        </div>
+        <div class="col">
+          <div class="card p-3"><h5>Multi-Format Content</h5><p>The platform can convert answers into text, audio, and even video using AI APIs. This helps users choose their preferred learning style.</p></div>
+        </div>
+        <div class="col">
+          <div class="card p-3"><h5>Script-Ready Responses</h5><p>The detailed answers are automatically structured in a format that can be used for content creation—like study scripts or explainer video</p></div>
+        </div>
+        <div class="col">
+          <div class="card p-3"><h5>Exam & Career Focused</h5><p>MentorMind can be trained to give answers aligned with CBSE, NEET, JEE, UPSC, and other exams—helping students stay on track with their goals.</p></div>
+        </div>
+        <div class="col">
+          <div class="card p-3"><h5>Free Mentorship</h5><p>Even students without access to expensive coaching can learn effectively through MentorMind’s AI-powered, Free , scalable solution.
+</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="my-5">
+      <h2>Contact Us</h2>
+      <p>Email: rksreepathi1@gmail.com</p>
+      <p>Phone: +91-9585728572</p>
+    </section>
+
+    <section id="privacy" class="my-5">
+      <h2>Privacy Policy</h2>
+      <p>Your data is secure. We never share your information.</p>
+    </section>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 MentorMindz All rights are reserved</p>
+    <a href="#privacy">Privacy Policy</a> | <a href="#contact">Contact</a>
+  </footer>
+
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('active');
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
