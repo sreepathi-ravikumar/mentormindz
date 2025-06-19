@@ -106,11 +106,14 @@
       video.load();
 
       try {
-        const res = await fetch("https://sreepathi-ravikumar-sample.hf.space/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question })
-        });
+        const res = await fetch("https://newgateway.onrender.com/ask", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Secret-Token": "rkmentormindzofficalstokens12345"
+  },
+  body: JSON.stringify({ question })
+});
 
 
         const data = await res.json();
@@ -118,11 +121,14 @@
           summaryOutput.innerHTML = marked.parse("<br><br>" + data.answer);
           summaryOutput.style.display = "none";
 
-          const response = await fetch('https://sreepathi-ravikumar-backendprocess.hf.space/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: data.answer })
-      });
+         const response = await fetch('https://gateway-bynk.onrender.com/generate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-KEY': 'rkmentormindzofficaltokenkey12345' // Example: "abc12345"
+  },
+  body: JSON.stringify({ duration: data.answer })
+});
             const blob = await response.blob();
           const url = URL.createObjectURL(blob);
 

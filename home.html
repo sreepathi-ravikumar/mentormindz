@@ -4,6 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MentorMindz</title>
+  <!-- Basic Meta Tags -->
+  <meta name="description" content="MentorMindz - A platform to gain knowledge through interactive learning, videos, voice interaction, and intelligent summaries.">
+  <meta name="keywords" content="MentorMindz, Education, AI learning, Knowledge, Video AI, Interactive Learning, Voice Search, Student Platform, Learn AI">
+  <meta name="author" content="MentorMindz Team">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mentormindz.pages.dev/
+  ">
+  <meta property="og:title" content="MentorMindz - Learn Smarter with AI">
+  <meta property="og:description" content="Empower your learning with AI-powered video search, summaries, and voice-based interactions on MentorMindz.">
+  <meta property="og:image" content="logo_1.jpg"> 
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://mentormindz.pages.dev/
+  ">
+  <meta name="twitter:title" content="MentorMindz - Learn Smarter with AI">
+  <meta name="twitter:description" content="AI-powered learning platform with smart search, video explanation, and instant summaries.">
+  <meta name="twitter:image" content="logo_1.jpg">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://mentormindz.pages.dev/
+  ">
 
   <!-- Bootstrap CDN -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
@@ -65,7 +89,8 @@
 <body>
   <!-- Top Nav -->
   <nav class="d-flex justify-content-between align-items-center p-3">
-    <button class="btn btn-outline-dark" onclick="window.open('https://forms.gle/G6iipGGaYryeWugS8')">Feedback</button>
+    <!-- <button class="btn btn-outline-dark" onclick="window.open('https://forms.gle/G6iipGGaYryeWugS8')">Feedback</button> -->
+    <a class="btn btn-outline-dark" href="feedback.html">Feedback</a>
     <div class="logo">
       <img src="logo.jpg" alt="Mentormind" class="logo-img"/>
     </div>
@@ -78,11 +103,12 @@
   <source id="videoSource" src="https://sreepathi-ravikumar-sample.hf.space/get_video" type="video/mp4">
   Your browser does not support the video tag.
 </video>
+      
       <button id="summary-btn">Summary</button>
       <div class="selecter" style="float: right;">
-        <label style="margin-right:10px;"><input type="radio" id="solveMode" name="mode" value="solve" checked style=" accent-color:black;">Solve mode</label>
-        <label style="margin-right:10px;"><input type="radio" id="easyMode" name="mode" value="detail" checked style=" accent-color:black;">Detail mode</label>
-        <label><input type="radio" id="detailedMode" name="mode" value="easy" checked style="accent-color:blacK;">Easy mode</label>
+        <label style="margin-right:10px;"><input type="radio" id="solveMode" name="mode" value="solve" checked style=" accent-color:black;">Solve</label>
+        <label style="margin-right:10px;"><input type="radio" id="easyMode" name="mode" value="detail" checked style=" accent-color:black;">Detail</label>
+        <label><input type="radio" id="detailedMode" name="mode" value="easy" checked style="accent-color:blacK;">Easy</label>
       </div>
       <div id="summary-output" class="summary-style"></div>
     </div>
@@ -107,8 +133,8 @@
 
   <!-- Footer -->
   <footer class="footer text-center mt-5">
-    <a href="index.html #contact" class="footer-link">Terms</a> | 
-    <a href="index.html #privacy" class="footer-link">Privacy Policy</a>
+    <a href="termsOfService.html" class="footer-link">Terms</a> | 
+    <a href="privacyPolicy.html" class="footer-link">Privacy Policy</a>
   </footer>
 
   <!-- JavaScript -->
