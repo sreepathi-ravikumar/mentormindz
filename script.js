@@ -7,7 +7,23 @@
     easyMode.addEventListener("change", checkMode);
     detailedMode.addEventListener("change", checkMode);
     solveMode.addEventListener("change", checkMode);
+  // Step 1: Create an array of your video links
+  const videoLinks = [
+    "video(1).mp4",
+    "video(2).mp4",
+    "video(3).mp4"
+  ];
 
+  // Step 2: Pick a random video from the array
+  const randomIndex = Math.floor(Math.random() * videoLinks.length);
+  const randomVideo = videoLinks[randomIndex]; 
+  const video = document.getElementById("myVideo");
+  const source = document.getElementById("videoSource");
+
+  source.src = randomVideo;
+  video.load();
+  video.play()
+   // optional: start playing
 
     function checkMode() {
       if (easyMode.checked) {
