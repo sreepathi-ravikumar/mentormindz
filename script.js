@@ -122,7 +122,7 @@
       video.load();
 
       try {
-        const res = await fetch("https://newgateway.onrender.com/ask", {
+        const res = await fetch("https://gateway1.rksreepathi1.workers.dev/ask", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -137,7 +137,7 @@
           summaryOutput.innerHTML = marked.parse("<br><br>" + data.answer);
           summaryOutput.style.display = "none";
 
-         const response = await fetch('https://gateway-bynk.onrender.com/generate', {
+         const response = await fetch('https://gateway2.rksreepathi1.workers.dev/generate', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
