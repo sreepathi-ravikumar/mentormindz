@@ -115,7 +115,7 @@
       const video = document.getElementById("myVideo");
       const source = document.getElementById("videoSource");
 
-      source.src = "https://cdn.pixabay.com/video/2021/05/27/75439-556022158_large.mp4";
+      source.src = "loading.mp4";
       video.removeAttribute("controls");
       video.load();
 
