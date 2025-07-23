@@ -9,7 +9,7 @@
     solveMode.addEventListener("change", checkMode);
   // Step 1: Create an array of your video links
   const videoLinks = [
-    "video.mp4"
+    "video(1).mp4"
   ];
 
   // Step 2: Pick a random video from the array
