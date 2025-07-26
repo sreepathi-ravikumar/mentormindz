@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-QXLS5NRDKJ"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-QXLS5NRDKJ');
-</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MentorMindz</title>
@@ -91,6 +82,50 @@
       50% { transform: scale(1.2); }
       100% { transform: scale(1); }
     }
+    #summary-output {
+      max-width: 500px;
+      max-height: 220px;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      overflow-x: hidden;
+      word-wrap: break-word;
+      line-height: 1.6;
+      scroll-behavior: smooth;
+      transition: box-shadow 0.3s ease;
+      margin-top:55px;
+      display: block;
+      
+    }
+
+    #summary-output::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #summary-output::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #summary-output::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      transition: background 0.3s ease;
+    }
+
+    #summary-output:hover::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    #summary-output {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,0,0,0.2) transparent;
+    }
+
+    #summary-output:hover {
+      scrollbar-color: rgba(0,0,0,0.4) transparent;
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -101,7 +136,7 @@
     <!-- <button class="btn btn-outline-dark" onclick="window.open('https://forms.gle/G6iipGGaYryeWugS8')">Feedback</button> -->
     <a class="btn btn-outline-dark" href="feedback.html">Feedback</a>
     <div class="logo">
-      <img src="logo.jpg" alt="Mentormind" class="logo-img"/>
+      <img src="logo.jpg" alt="MentorMindz" class="logo-img"/>
     </div>
   </nav>
 
@@ -113,7 +148,7 @@
   Your browser does not support the video tag.
 </video>
       
-      <button id="summary-btn">Summary</button>
+      <button id="summary-btn">Hide Note</button>
       <div class="selecter" style="float: right;">
         <label style="margin-right:10px;"><input type="radio" id="solveMode" name="mode" value="solve" checked style=" accent-color:black;">Solve</label>
         <label style="margin-right:10px;"><input type="radio" id="easyMode" name="mode" value="detail" checked style=" accent-color:black;">Detail</label>

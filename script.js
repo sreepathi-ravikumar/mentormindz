@@ -9,9 +9,9 @@
     solveMode.addEventListener("change", checkMode);
   // Step 1: Create an array of your video links
   const videoLinks = [
-    "video(1).mp4".
-    "video(2).mp4,
-    "video(3).mp4
+    "video(1).mp4",
+    "video(2).mp4",
+    "video(3).mp4"
   ];
 
   // Step 2: Pick a random video from the array
@@ -49,6 +49,8 @@
     const micIcon = document.getElementById("mic-icon");
     const summaryBtn = document.getElementById("summary-btn");
     const summaryOutput = document.getElementById("summary-output");
+    summaryOutput.style.display = "none";
+    summaryBtn.textContent = 'Show Note';
 
     let recognition;
     let isListening = false;
@@ -117,7 +119,7 @@
       const video = document.getElementById("myVideo");
       const source = document.getElementById("videoSource");
 
-      source.src = "loading.mp4";
+      source.src = "https://cdn.pixabay.com/video/2021/05/27/75439-556022158_large.mp4";
       video.removeAttribute("controls");
       video.load();
 
@@ -134,8 +136,10 @@
 
         const data = await res.json();
         if (data.answer) {
-          summaryOutput.innerHTML = marked.parse("<br><br>" + data.answer);
-          summaryOutput.style.display = "none";
+          summaryOutput.innerHTML = marked.parse(data.answer);
+          summaryOutput.style.display = "block";
+          summaryBtn.textContent = 'Hide Note';
+          
 
          const response = await fetch('https://gateway2.rksreepathi1.workers.dev/generate', {
   method: 'POST',
@@ -150,6 +154,8 @@
 
   const video = document.getElementById("myVideo");
   const source = document.getElementById("videoSource");
+  summaryOutput.style.display = "none";
+  summaryBtn.textContent = 'Show Note';
 
   source.src = url;
   video.setAttribute("controls", true);
@@ -180,7 +186,14 @@
       }
     });
 
-    summaryBtn.addEventListener("click", () => {
-      summaryOutput.style.display = summaryOutput.style.display === "block" ? "none" : "block";
+ 
+      summaryBtn.addEventListener('click', () => {
+      if (summaryOutput.style.display === 'none') {
+        summaryOutput.style.display = 'block';
+        summaryBtn.textContent = 'Hide Note';
+      } else {
+        summaryOutput.style.display = 'none';
+        summaryBtn.textContent = 'Show Note';
+      }
     });
    
