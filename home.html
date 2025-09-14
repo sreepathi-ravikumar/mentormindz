@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mentormindz vinayaga</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <!-- Add marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="top-bar">
+      <div class="avatar"><i class="fa-solid fa-user"></i></div>
+      <img src="logo.jpg" alt="Mentorsmind Logo" class="logo" style="margin-right:-20px;" />
+    </div>
+    <div class="sidebar-drawer">
+      <div class="sidebar-header">
+        <span class="sidebar-username">User name</span>
+        <span class="sidebar-avatar"><i class="fa-solid fa-user"></i></span>
+      </div>
+      <ul class="sidebar-menu">
+        <li><button class="sidebar-btn">New</button></li>
+        <li><button class="sidebar-btn">Feedback</button></li>
+        <li><button class="sidebar-btn toggle-dark">ToggleMode</button></li>
+      </ul>
+      <div class="sidebar-settings">
+        <!-- <span><i class="fa-solid fa-gear"></i> Settings</span> -->
+      </div>
+    </div>
+    <div class="sidebar-overlay"></div>
+    <div class="content">
+      <!-- <div class="chat-messages"></div> -->
+      <div class="card-image">
+        <video id="myVideo" controls autoplay loop preload="auto" width="100%" height="auto" muted>
+        <source id="videoSource" src="https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      </div>
+      <div class="actions">
+        <button class="like-btn"><i class="fa-regular fa-thumbs-up"></i></button>
+        <button class="dislike-btn"><i class="fa-regular fa-thumbs-down"></i></button>
+        <button class="action-radio" class="settings-btn" onclick="togglePanel()"><i class="fa-regular fa-file-lines"></i></button>
+        <button class="action-radio"><i class="fa-solid fa-share"></i></button>
+        <button class="action-radio"><i class="fa-solid fa-download"></i></button>
+      </div>
+    </div>
+    <div class="chat-box-container">
+      <div class="chat-box">
+        <button class="settings-button" onclick="toggleSheet()"><i class="fa-solid fa-gear"></i></button>
+        <input type="text" placeholder="Ask anything" class="chat-input"/>
+        <button class="file"><i class="fa-solid fa-camera"></i></button>
+        <button class="send"><i class="fa-solid fa-microphone"></i></button>
+      </div>
+    </div>
+  <div class="settings-overlay" id="settingsOverlay" onclick="closeSheet()"></div>
+  <!-- Settings sheet -->
+  <div class="settings-sheet" id="settingsSheet">
+    <div class="settings-header" id="settingsHeader">
+      <div class="drag-bar" id="dragBar"></div>
+      <div class="tabs">
+        <div class="tab-button active" id="languageTab" onclick="switchTab('language')">Language</div>
+        <div class="tab-button" id="modeTab" onclick="switchTab('mode')">Mode</div>
+      </div>
+    </div>
+    <div class="tab-content" id="languageContent">
+      <input type="text" class="search-input" placeholder="Search language..." oninput="filterLanguages(this.value)">
+      <div id="languageList"></div>
+    </div>
+    <div class="tab-content" id="modeContent" style="display: none">
+      <div class="mode-option" onclick="selectMode('Simple Learn')">
+        <div>
+          <strong>Simple Learn</strong> <span class="badge">2–3 sec</span><br>
+          <small>Best for casual learning and fast answers</small>
+        </div>
+        <div class="radio" id="radio-Simple Learn"></div>
+      </div>
+      <div class="mode-option" onclick="selectMode('Learn Deeper')">
+        <div>
+          <strong>Learn Deeper</strong> <span class="badge">~30 sec</span><br>
+          <small>Ideal for deep understanding and concepts</small>
+        </div>
+        <div class="radio" id="radio-Learn Deeper"></div>
+      </div>
+      <div class="mode-option" onclick="selectMode('Solve Smart')">
+        <div>
+          <strong>Solve Smart</strong> <span class="badge">~20 sec</span><br>
+          <small>Auto-analyzes to give the most effective explanation</small>
+        </div>
+        <div class="radio" id="radio-Solve Smart"></div>
+      </div>
+    </div>
+  </div>
+<div class="bg-mask" id="maskLayer" onclick="hidePanel()"></div>
+<div class="panel-container" id="bottomPanel">
+  <div class="panel-header" id="dragArea">
+    <div class="handle-bar"></div>
+    <div class="tab-row">
+      <div class="tab-link active">Note</div>
+    </div>
+  </div>
+  <div class="panel-body" id="response">
+    MentorMindz is not just another educational platform — it’s a revolutionary AI-powered ecosystem designed to transform the way learners acquire knowledge, develop skills, and unlock their full potential. In a world overwhelmed by information, students and lifelong learners often struggle with direction, clarity, and personalized guidance. MentorMindz bridges this gap by integrating cutting-edge artificial intelligence with tailored mentorship, creating a smarter, more focused path to success
+  
+  </div>
+</div>
+    <div class="overlay"></div>
+    <div class="settings-menu">
+      <div class="settings-option image-opt"><i class="fas fa-image"></i><span>Choose Image</span></div>
+      <div class="settings-option file-opt"><i class="fas fa-file"></i><span>Choose File</span></div>
+      <div class="settings-option camera-opt"><i class="fas fa-camera"></i><span>Take Photo</span></div>
+      <div class="settings-option cancel-opt"><i class="fas fa-times"></i><span>Cancel</span></div>
+    </div>
+  
+  </div>
+  <input type="file" id="upload-image" accept="image/*" style="display:none">
+  <input type="file" id="upload-file" style="display:none">
+  <input type="file" id="take-photo" accept="image/*" capture="environment" style="display:none">
+</body>
+<script src="script.js"></script>
+</html>
