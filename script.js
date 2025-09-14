@@ -1,4 +1,42 @@
- const appContainer = document.querySelector('.app-container');
+     const video = document.getElementById("myVideo");
+    const source = document.getElementById("videoSource");
+
+
+    const videos = [
+      { src: "video1 (1).mp4", audio: true, loop: false },
+      { src: "https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4", audio: false, loop: true }
+    ];
+
+    let index = 0;
+
+    function playVideo(i) {
+      if (i >= videos.length) return;
+
+      const vid = videos[i];
+      source.src = vid.src;
+      video.loop = vid.loop;
+      video.controls=false;
+      video.load();
+
+    
+      video.play().catch(() => {
+        // Autoplay policy: user interaction may be required
+        console.log("User interaction required for video autoplay.");
+      });
+    }
+
+    // When video ends (only for non-looping ones)
+    video.addEventListener("ended", () => {
+      if (!video.loop) {
+        index++;
+        playVideo(index);
+      }
+    });
+
+    // Start first video
+    playVideo(index);
+
+const appContainer = document.querySelector('.app-container');
     const chatInput = document.querySelector('.chat-input');
     const content = document.querySelector('.content');
     const sendButton = document.querySelector('.send');
