@@ -76,7 +76,7 @@ const appContainer = document.querySelector('.app-container');
       if (isActive) likeBtn.classList.remove('active');
     });
     // Action buttons radio
-    const actionRadios = Array.from(document.querySelectorAll('.action-radio'));
+    /*const actionRadios = Array.from(document.querySelectorAll('.action-radio'));
     actionRadios.forEach(btn => {
       btn.addEventListener('click', function () {
         const icon = this.querySelector('i');
@@ -87,7 +87,7 @@ const appContainer = document.querySelector('.app-container');
           icon.classList.add('active');
         }
       });
-    });
+    });*/
     // Send message or voice
     let uploadedImageUrl = null;
     sendButton.addEventListener('click', () => {
