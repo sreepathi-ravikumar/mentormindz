@@ -43,9 +43,9 @@
       <div class="actions">
         <button class="like-btn"><i class="fa-regular fa-thumbs-up"></i></button>
         <button class="dislike-btn"><i class="fa-regular fa-thumbs-down"></i></button>
-        <button class="action-radio" class="settings-btn" onclick="togglePanel()"><i class="fa-regular fa-file-lines"></i></button>
-        <button class="action-radio"><i class="fa-solid fa-share"></i></button>
-        <button class="action-radio"><i class="fa-solid fa-download"></i></button>
+        <button class="action-radio settings-btn" onclick="togglePanel()"><i class="fa-regular fa-file-lines"></i></button>
+        <button class="action-radio" id="shareBtn"><i class="fa-solid fa-share"></i></button>
+        <button class="action-radio" id="downloadBtn"><i class="fa-solid fa-download"></i></button>
       </div>
     </div>
     <div class="chat-box-container">
@@ -119,6 +119,89 @@
   <input type="file" id="upload-image" accept="image/*" style="display:none">
   <input type="file" id="upload-file" style="display:none">
   <input type="file" id="take-photo" accept="image/*" capture="environment" style="display:none">
+
+<script>
+  const videoPlayer = document.getElementById('myVideo');
+  const shareBtn = document.getElementById('shareBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  let currentFile = null;
+  let videoBlobURL = null;
+  let fileName = null;
+
+  // Detect Web Share API Level 2 support for file sharing
+  let fileShareSupport = false;
+  try {
+    fileShareSupport = !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.mp4', { type: 'video/mp4' })] }));
+  } catch(e) {
+    fileShareSupport = false;
+  }
+
+  // Fetch the static video as blob to create a File object for sharing and downloading
+  async function fetchVideoAsFile() {
+    const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
+    if(!videoSrc) {
+      console.log('No video source found.');
+      return;
+    }
+    fileName = videoSrc.split('/').pop().split('?')[0] || 'video.mp4';
+    try {
+      const response = await fetch(videoSrc);
+      const blob = await response.blob();
+      currentFile = new File([blob], fileName, { type: blob.type || 'video/mp4' });
+      videoBlobURL = URL.createObjectURL(blob);
+    } catch(err) {
+      console.error('Failed to load the video file as blob (possibly CORS issue). Falling back to URL for share and download.');
+      console.error(err);
+    }
+  }
+
+  fetchVideoAsFile();
+
+  shareBtn.addEventListener('click', async () => {
+    const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
+    if (currentFile && fileShareSupport) {
+      try {
+        await navigator.share({ files: [currentFile], title: currentFile.name, text: 'Sharing a video file' });
+      } catch(err) {
+        console.log('Share failed or cancelled.');
+        console.error(err);
+      }
+    } else if (navigator.share) {
+      try {
+        await navigator.share({ url: videoSrc, title: 'Video', text: 'Sharing a video URL' });
+      } catch(err) {
+        console.log('Share failed or cancelled.');
+        console.error(err);
+      }
+    } else {
+      console.log('Native sharing not supported. Please download and share manually.');
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
+    if (!videoSrc) {
+      console.log('No video source found.');
+      return;
+    }
+    const src = videoBlobURL || videoSrc;
+    const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = dlName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  // Cleanup blob URL on page unload
+  window.addEventListener('beforeunload', () => {
+    if(videoBlobURL) {
+      URL.revokeObjectURL(videoBlobURL);
+    }
+  });
+</script>
 </body>
 <script src="script.js"></script>
 </html>
