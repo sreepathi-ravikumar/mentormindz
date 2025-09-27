@@ -160,6 +160,7 @@
 
   shareBtn.addEventListener('click', async () => {
     const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
+    const src = videoBlobURL || videoSrc;
     if (currentFile && fileShareSupport) {
       try {
         await navigator.share({ files: [currentFile], title: currentFile.name, text: 'Sharing a video file' });
@@ -169,7 +170,7 @@
       }
     } else if (navigator.share) {
       try {
-        await navigator.share({ url: videoSrc, title: 'Video', text: 'Sharing a video URL' });
+        await navigator.share({ url: src, title: 'Video', text: 'Sharing a video URL' });
       } catch(err) {
         console.log('Share failed or cancelled.');
         console.error(err);
