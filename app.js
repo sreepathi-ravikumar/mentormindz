@@ -1,7 +1,7 @@
 
     // Firebase config - fill with your project's values
     const firebaseConfig = {
-      apiKey: API_KEY,
+      apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
       authDomain: AUTH_DOMAIN,
       projectId:PROJECT_ID,
       storageBucket: STORAGE_BUCKET,
@@ -148,4 +148,5 @@
 
     window.addEventListener('beforeunload', () => {
       if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
+
     });
