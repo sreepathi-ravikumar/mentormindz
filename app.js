@@ -1,7 +1,7 @@
 
     // Firebase config - fill with your project's values
     const firebaseConfig = {
-      apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
+      apiKey: API_KEY,
       authDomain: AUTH_DOMAIN,
       projectId:PROJECT_ID,
       storageBucket: STORAGE_BUCKET,
@@ -17,6 +17,8 @@
     const sidebarName = document.querySelector('.sidebar-username');
     const sidebarAvatar = document.querySelector('.sidebar-avatar');
     const logoutBtn = document.getElementById('logoutBtn');
+    console.log(apikey);
+ 
 
     // Helper to get email username before @
     function emailUsername(email) {
@@ -150,3 +152,4 @@
       if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
 
     });
+
