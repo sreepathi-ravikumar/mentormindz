@@ -1,9 +1,9 @@
-     const video = document.getElementById("myVideo");
+    const video = document.getElementById("myVideo");
     const source = document.getElementById("videoSource");
 
 
     const videos = [
-      { src: "video1 (1).mp4", audio: true, loop: false },
+      { src: "video.mp4", audio: true, loop: false },
       { src: "https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4", audio: false, loop: true }
     ];
 
@@ -36,7 +36,9 @@
     // Start first video
     playVideo(index);
 
-const appContainer = document.querySelector('.app-container');
+
+
+ const appContainer = document.querySelector('.app-container');
     const chatInput = document.querySelector('.chat-input');
     const content = document.querySelector('.content');
     const sendButton = document.querySelector('.send');
@@ -72,11 +74,12 @@ const appContainer = document.querySelector('.app-container');
       if (isActive) dislikeBtn.classList.remove('active');
     });
     dislikeBtn.parentNode.addEventListener('click', () => {
-      const isActive = dislikeBtn.classList.toggle('active');
+      const isActive = dislikeBtn
+      .classList.toggle('active');
       if (isActive) likeBtn.classList.remove('active');
     });
     // Action buttons radio
-    /*const actionRadios = Array.from(document.querySelectorAll('.action-radio'));
+    /*const actionRadios = Array.from(document.querySelectorAll('.action'));
     actionRadios.forEach(btn => {
       btn.addEventListener('click', function () {
         const icon = this.querySelector('i');
@@ -291,7 +294,9 @@ async function streamAsk(question,selectedLanguage,selectedMode) {
       out.innerHTML = '<div class="loading-squares"><span></span><span></span><span></span></div>';
 
       if (uploadedImageUrl) {
-        out.innerHTML = "updatesoon";
+        const question = uploadedImageUrl;
+
+        await streamAsk(question,selectedLanguage,selectedMode);
 
         uploadedImageUrl = null;
       } else {
@@ -328,16 +333,16 @@ async function streamAsk(question,selectedLanguage,selectedMode) {
     }
     // Attachment options
     const imageOpt = document.querySelector('.image-opt');
-    const fileOpt = document.querySelector('.file-opt');
+    // const fileOpt = document.querySelector('.file-opt');
     const cameraOpt = document.querySelector('.camera-opt');
     imageOpt.addEventListener('click', () => {
       document.getElementById('upload-image').click();
       closeSettings();
     });
-    fileOpt.addEventListener('click', () => {
-      document.getElementById('upload-file').click();
-      closeSettings();
-    });
+    // fileOpt.addEventListener('click', () => {
+    //   document.getElementById('upload-file').click();
+    //   closeSettings();
+    // });
     cameraOpt.addEventListener('click', () => {
       document.getElementById('take-photo').click();
       closeSettings();
@@ -348,10 +353,7 @@ async function streamAsk(question,selectedLanguage,selectedMode) {
       const file = e.target.files[0];
       if (file && file.type.startsWith('image/')) {
         try {
-          const uploadedFiles = await puter.fs.upload([file]);
-          const uploadedFile = uploadedFiles[0];
-          const url = await puter.fs.getReadURL(uploadedFile.path);
-          uploadedImageUrl = url;
+          uploadedImageUrl = file;
           chatInput.value = `Image uploaded: ${file.name}`;
         } catch (error) {
           console.error('Upload error:', error);
@@ -363,7 +365,7 @@ async function streamAsk(question,selectedLanguage,selectedMode) {
     }
     document.getElementById('upload-image').addEventListener('change', handleUpload);
     document.getElementById('take-photo').addEventListener('change', handleUpload);
-    document.getElementById('upload-file').addEventListener('change', handleUpload);
+    // document.getElementById('upload-file').addEventListener('change', handleUpload);
     // Sidebar logic
     const userAvatar = document.querySelector('.top-bar .avatar');
     const sidebar = document.querySelector('.sidebar-drawer');
