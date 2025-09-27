@@ -1,13 +1,13 @@
 
     // Firebase config - fill with your project's values
     const firebaseConfig = {
-      apiKey: env.API_KEY,
-      authDomain: AUTH_DOMAIN,
-      projectId:PROJECT_ID,
-      storageBucket: STORAGE_BUCKET,
-      messagingSenderId: MESSAGINGSENDERID,
-      appId: APP_ID,
-      measurementId: MEASUREMENTID
+      apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
+      authDomain: "mentormindz-8211a.firebaseapp.com",
+      projectId: "mentormindz-8211a",
+      storageBucket: "mentormindz-8211a.firebasestorage.app",
+      messagingSenderId: "913045756560",
+      appId: "1:913045756560:web:65cc21aca54ac1c2739615",
+      measurementId: "G-GY0ELMJNL6"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -152,5 +152,6 @@
       if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
 
     });
+
 
 
