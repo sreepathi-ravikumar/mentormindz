@@ -143,7 +143,6 @@ body {
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: #fde047;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -279,7 +278,7 @@ body {
     }
     .settings-menu {
       position: fixed;
-      bottom: -250px;
+      bottom: -200px;
       left: 0;
       right: 0;
       background: var(--white);
@@ -392,12 +391,13 @@ body {
     }
     .sidebar-settings {
       margin-top: auto;
-      padding: 16px 22px;
+      padding: 0px 22px;
       border-top: 1px solid var(--medium-gray);
       color: var(--text-color);
       font-size: 17px;
       cursor: pointer;
       transition: background 0.15s;
+      margin-bottom:10px;
     }
     .sidebar-settings:hover {
       background: var(--light-gray);
@@ -409,6 +409,10 @@ body {
       left: 0; top: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.22);
       z-index: 200;
+    }
+    .sidebar-logout {
+      margin-top: 0px;
+      margin-bottom:30px;
     }
     .sidebar-overlay.active {
       display: block;
@@ -606,6 +610,8 @@ body {
   }
   #note-toggle em {
     font-style: italic;
+
+    
   }
 
 
