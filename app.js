@@ -85,73 +85,76 @@
     });
 
     // --- Video Sharing & Download logic remains unchanged ---
-    const videoPlayer = document.getElementById('myVideo');
-    const shareBtn = document.getElementById('shareBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
+const videoPlayer = document.getElementById('myVideo');
+const shareBtn = document.getElementById('shareBtn');
+const downloadBtn = document.getElementById('downloadBtn');
 
-    let currentFile = null;
-    let videoBlobURL = null;
-    let fileName = null;
+let currentFile = null;
+let videoBlobURL = null;
+let fileName = null;
 
-    // Check file share support
-    let fileShareSupport = false;
+// Check file share support
+let fileShareSupport = false;
+try {
+  fileShareSupport = !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.mp4', { type: 'video/mp4' })] }));
+} catch (e) {
+  fileShareSupport = false;
+}
+
+async function fetchVideoAsFile() {
+  const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
+  if (!videoSrc) return;
+  fileName = videoSrc.split('/').pop().split('?')[0] || 'video.mp4';
+  try {
+    const response = await fetch(videoSrc);
+    const blob = await response.blob();
+    currentFile = new File([blob], fileName, { type: blob.type || 'video/mp4' });
+    videoBlobURL = URL.createObjectURL(blob);
+  } catch (err) {
+    console.error('Video load failed, using fallback URL', err);
+  }
+}
+fetchVideoAsFile();
+
+// Share video using Web Share API Level 2
+shareBtn.addEventListener("click", async () => {
+  if (!currentFile) {
+    alert("Please upload a video first!");
+    return;
+  }
+
+  if (navigator.canShare && navigator.canShare({ files: [currentFile] })) {
     try {
-      fileShareSupport = !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.mp4', { type: 'video/mp4' })] }));
-    } catch (e) {
-      fileShareSupport = false;
+      await navigator.share({
+        title: "Shared Video",
+        text: "Check out this video!",
+        files: [currentFile],
+      });
+      console.log("Video shared successfully!");
+    } catch (err) {
+      console.error("Error sharing video:", err);
     }
+  } else {
+    alert("File sharing is not supported on this browser.");
+  }
+});
 
-    async function fetchVideoAsFile() {
-      const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-      if (!videoSrc) return;
-      fileName = videoSrc.split('/').pop().split('?')[0] || 'video.mp4';
-      try {
-        const response = await fetch(videoSrc);
-        const blob = await response.blob();
-        currentFile = new File([blob], fileName, { type: blob.type || 'video/mp4' });
-        videoBlobURL = URL.createObjectURL(blob);
-      } catch (err) {
-        console.error('Video load failed, using fallback URL', err);
-      }
-    }
-    fetchVideoAsFile();
+downloadBtn.addEventListener('click', () => {
+  const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
+  if (!videoSrc) return;
+  const src = videoBlobURL || videoSrc;
+  const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = dlName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
 
-    shareBtn.addEventListener('click', async () => {
-      const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-      if (currentFile && fileShareSupport) {
-        try {
-          await navigator.share({ files: [currentFile], title: currentFile.name, text: 'Sharing a video file' });
-        } catch (err) {
-          console.error('Share failed', err);
-        }
-      } else if (navigator.share) {
-        try {
-          await navigator.share({ url: videoSrc, title: 'Video', text: 'Sharing a video URL' });
-        } catch (err) {
-          console.error('Share failed', err);
-        }
-      } else {
-        console.log('Native sharing not supported.');
-      }
-    });
-
-    downloadBtn.addEventListener('click', () => {
-      const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-      if (!videoSrc) return;
-      const src = videoBlobURL || videoSrc;
-      const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
-      const a = document.createElement('a');
-      a.href = src;
-      a.download = dlName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    });
-
-    window.addEventListener('beforeunload', () => {
-      if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
-
-    });
+window.addEventListener('beforeunload', () => {
+  if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
+});
 
 
 
