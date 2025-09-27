@@ -36,7 +36,7 @@
       <!-- <div class="chat-messages"></div> -->
       <div class="card-image">
         <video id="myVideo" controls autoplay loop preload="auto" width="100%" height="auto" muted>
-        <source id="videoSource" src="https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4" type="video/mp4">
+        <source id="videoSource" src="" type="video/mp4">
         Your browser does not support the video tag.
       </video>
       </div>
@@ -160,7 +160,6 @@
 
   shareBtn.addEventListener('click', async () => {
     const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-    const src = videoBlobURL || videoSrc;
     if (currentFile && fileShareSupport) {
       try {
         await navigator.share({ files: [currentFile], title: currentFile.name, text: 'Sharing a video file' });
@@ -170,7 +169,7 @@
       }
     } else if (navigator.share) {
       try {
-        await navigator.share({ url: src, title: 'Video', text: 'Sharing a video URL' });
+        await navigator.share({ url: videoSrc, title: 'Video', text: 'Sharing a video URL' });
       } catch(err) {
         console.log('Share failed or cancelled.');
         console.error(err);
