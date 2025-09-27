@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Mentormindz vinayaga</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#6366f1">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  <!-- Add marked.js for markdown rendering -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#6366f1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
   <div class="app-container">
     <div class="top-bar">
-      <div class="avatar"><i class="fa-solid fa-user"></i></div>
-      <img src="logo.jpg" alt="Mentorsmind Logo" class="logo" style="margin-right:-20px;" />
+      <div class="avatar"></div>
+      <img src="logo.jpg" alt="Mentormindz Logo" class="logo" style="margin-right:-20px;" />
     </div>
-    <div class="sidebar-drawer">
+    <div class="sidebar-drawer" id="sidebarDrawer">
       <div class="sidebar-header">
         <span class="sidebar-username">User name</span>
         <span class="sidebar-avatar"><i class="fa-solid fa-user"></i></span>
@@ -27,18 +28,22 @@
         <li><button class="sidebar-btn">Feedback</button></li>
         <li><button class="sidebar-btn toggle-dark">ToggleMode</button></li>
       </ul>
-      <div class="sidebar-settings">
-        <!-- <span><i class="fa-solid fa-gear"></i> Settings</span> -->
+      <div class="sidebar-settings"></div>
+      <div class="sidebar-logout">
+        <button class="sidebar-btn" id="logoutBtn" style="display:none;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</button>
       </div>
     </div>
-    <div class="sidebar-overlay"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="content">
-      <!-- <div class="chat-messages"></div> -->
       <div class="card-image">
         <video id="myVideo" controls autoplay loop preload="auto" width="100%" height="auto" muted>
-        <source id="videoSource" src="https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
+          <source
+            id="videoSource"
+            src="https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4"
+            type="video/mp4"
+          />
+          Your browser does not support the video tag.
+        </video>
       </div>
       <div class="actions">
         <button class="like-btn"><i class="fa-regular fa-thumbs-up"></i></button>
@@ -51,157 +56,77 @@
     <div class="chat-box-container">
       <div class="chat-box">
         <button class="settings-button" onclick="toggleSheet()"><i class="fa-solid fa-gear"></i></button>
-        <input type="text" placeholder="Ask anything" class="chat-input"/>
+        <input type="text" placeholder="Ask anything" class="chat-input" />
         <button class="file"><i class="fa-solid fa-camera"></i></button>
         <button class="send"><i class="fa-solid fa-microphone"></i></button>
       </div>
     </div>
-  <div class="settings-overlay" id="settingsOverlay" onclick="closeSheet()"></div>
-  <!-- Settings sheet -->
-  <div class="settings-sheet" id="settingsSheet">
-    <div class="settings-header" id="settingsHeader">
-      <div class="drag-bar" id="dragBar"></div>
-      <div class="tabs">
-        <div class="tab-button active" id="languageTab" onclick="switchTab('language')">Language</div>
-        <div class="tab-button" id="modeTab" onclick="switchTab('mode')">Mode</div>
-      </div>
-    </div>
-    <div class="tab-content" id="languageContent">
-      <input type="text" class="search-input" placeholder="Search language..." oninput="filterLanguages(this.value)">
-      <div id="languageList"></div>
-    </div>
-    <div class="tab-content" id="modeContent" style="display: none">
-      <div class="mode-option" onclick="selectMode('Simple Learn')">
-        <div>
-          <strong>Simple Learn</strong> <span class="badge">2–3 sec</span><br>
-          <small>Best for casual learning and fast answers</small>
+    <div class="settings-overlay" id="settingsOverlay" onclick="closeSheet()"></div>
+    <div class="settings-sheet" id="settingsSheet">
+      <div class="settings-header" id="settingsHeader">
+        <div class="drag-bar" id="dragBar"></div>
+        <div class="tabs">
+          <div class="tab-button active" id="languageTab" onclick="switchTab('language')">Language</div>
+          <div class="tab-button" id="modeTab" onclick="switchTab('mode')">Mode</div>
         </div>
-        <div class="radio" id="radio-Simple Learn"></div>
       </div>
-      <div class="mode-option" onclick="selectMode('Learn Deeper')">
-        <div>
-          <strong>Learn Deeper</strong> <span class="badge">~30 sec</span><br>
-          <small>Ideal for deep understanding and concepts</small>
-        </div>
-        <div class="radio" id="radio-Learn Deeper"></div>
+      <div class="tab-content" id="languageContent">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search language..."
+          oninput="filterLanguages(this.value)"
+        />
+        <div id="languageList"></div>
       </div>
-      <div class="mode-option" onclick="selectMode('Solve Smart')">
-        <div>
-          <strong>Solve Smart</strong> <span class="badge">~20 sec</span><br>
-          <small>Auto-analyzes to give the most effective explanation</small>
+      <div class="tab-content" id="modeContent" style="display: none">
+        <div class="mode-option" onclick="selectMode('Simple Learn')">
+          <div>
+            <strong>Simple Learn</strong> <span class="badge">2–3 sec</span><br />
+            <small>Best for casual learning and fast answers</small>
+          </div>
+          <div class="radio" id="radio-Simple Learn"></div>
         </div>
-        <div class="radio" id="radio-Solve Smart"></div>
+        <div class="mode-option" onclick="selectMode('Learn Deeper')">
+          <div>
+            <strong>Learn Deeper</strong> <span class="badge">~30 sec</span><br />
+            <small>Ideal for deep understanding and concepts</small>
+          </div>
+          <div class="radio" id="radio-Learn Deeper"></div>
+        </div>
+        <div class="mode-option" onclick="selectMode('Solve Smart')">
+          <div>
+            <strong>Solve Smart</strong> <span class="badge">~20 sec</span><br />
+            <small>Auto-analyzes to give the most effective explanation</small>
+          </div>
+          <div class="radio" id="radio-Solve Smart"></div>
+        </div>
       </div>
     </div>
-  </div>
-<div class="bg-mask" id="maskLayer" onclick="hidePanel()"></div>
-<div class="panel-container" id="bottomPanel">
-  <div class="panel-header" id="dragArea">
-    <div class="handle-bar"></div>
-    <div class="tab-row">
-      <div class="tab-link active">Note</div>
+    <div class="bg-mask" id="maskLayer" onclick="hidePanel()"></div>
+    <div class="panel-container" id="bottomPanel">
+      <div class="panel-header" id="dragArea">
+        <div class="handle-bar"></div>
+        <div class="tab-row">
+          <div class="tab-link active">Note</div>
+        </div>
+      </div>
+      <div class="panel-body" id="response">
+        MentorMindz is not just another educational platform — it’s a revolutionary AI-powered ecosystem designed to transform the way learners acquire knowledge, develop skills, and unlock their full potential. In a world overwhelmed by information, students and lifelong learners often struggle with direction, clarity, and personalized guidance. MentorMindz bridges this gap by integrating cutting-edge artificial intelligence with tailored mentorship, creating a smarter, more focused path to success
+      </div>
     </div>
-  </div>
-  <div class="panel-body" id="response">
-    MentorMindz is not just another educational platform — it’s a revolutionary AI-powered ecosystem designed to transform the way learners acquire knowledge, develop skills, and unlock their full potential. In a world overwhelmed by information, students and lifelong learners often struggle with direction, clarity, and personalized guidance. MentorMindz bridges this gap by integrating cutting-edge artificial intelligence with tailored mentorship, creating a smarter, more focused path to success
-  
-  </div>
-</div>
     <div class="overlay"></div>
     <div class="settings-menu">
       <div class="settings-option image-opt"><i class="fas fa-image"></i><span>Choose Image</span></div>
-      <div class="settings-option file-opt"><i class="fas fa-file"></i><span>Choose File</span></div>
       <div class="settings-option camera-opt"><i class="fas fa-camera"></i><span>Take Photo</span></div>
       <div class="settings-option cancel-opt"><i class="fas fa-times"></i><span>Cancel</span></div>
     </div>
-  
   </div>
-  <input type="file" id="upload-image" accept="image/*" style="display:none">
-  <input type="file" id="upload-file" style="display:none">
-  <input type="file" id="take-photo" accept="image/*" capture="environment" style="display:none">
+  <input type="file" id="upload-image" accept="image/*" style="display: none" />
+  <input type="file" id="take-photo" accept="image/*" capture="environment" style="display: none" />
 
-<script>
-  const videoPlayer = document.getElementById('myVideo');
-  const shareBtn = document.getElementById('shareBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
 
-  let currentFile = null;
-  let videoBlobURL = null;
-  let fileName = null;
-
-  // Detect Web Share API Level 2 support for file sharing
-  let fileShareSupport = false;
-  try {
-    fileShareSupport = !!(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.mp4', { type: 'video/mp4' })] }));
-  } catch(e) {
-    fileShareSupport = false;
-  }
-
-  // Fetch the static video as blob to create a File object for sharing and downloading
-  async function fetchVideoAsFile() {
-    const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-    if(!videoSrc) {
-      console.log('No video source found.');
-      return;
-    }
-    fileName = videoSrc.split('/').pop().split('?')[0] || 'video.mp4';
-    try {
-      const response = await fetch(videoSrc);
-      const blob = await response.blob();
-      currentFile = new File([blob], fileName, { type: blob.type || 'video/mp4' });
-      videoBlobURL = URL.createObjectURL(blob);
-    } catch(err) {
-      console.error('Failed to load the video file as blob (possibly CORS issue). Falling back to URL for share and download.');
-      console.error(err);
-    }
-  }
-
-  fetchVideoAsFile();
-
-  shareBtn.addEventListener('click', async () => {
-    const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-    if (currentFile && fileShareSupport) {
-      try {
-        await navigator.share({ files: [currentFile], title: currentFile.name, text: 'Sharing a video file' });
-      } catch(err) {
-        console.log('Share failed or cancelled.');
-        console.error(err);
-      }
-    } else if (navigator.share) {
-      try {
-        await navigator.share({ url: videoSrc, title: 'Video', text: 'Sharing a video URL' });
-      } catch(err) {
-        console.log('Share failed or cancelled.');
-        console.error(err);
-      }
-    } else {
-      console.log('Native sharing not supported. Please download and share manually.');
-    }
-  });
-
-  downloadBtn.addEventListener('click', () => {
-    const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-    if (!videoSrc) {
-      console.log('No video source found.');
-      return;
-    }
-    const src = videoBlobURL || videoSrc;
-    const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
-    const a = document.createElement('a');
-    a.href = src;
-    a.download = dlName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  });
-
-  // Cleanup blob URL on page unload
-  window.addEventListener('beforeunload', () => {
-    if(videoBlobURL) {
-      URL.revokeObjectURL(videoBlobURL);
-    }
-  });
-</script>
+  <script src="script.js"></script>
+  <script src="app.js"></script>
 </body>
-<script src="script.js"></script>
 </html>
