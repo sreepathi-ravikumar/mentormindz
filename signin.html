@@ -150,13 +150,13 @@
 
     // Your Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
-      authDomain: "mentormindz-8211a.firebaseapp.com",
-      projectId: "mentormindz-8211a",
-      storageBucket: "mentormindz-8211a.firebasestorage.app",
-      messagingSenderId: "913045756560",
-      appId: "1:913045756560:web:65cc21aca54ac1c2739615",
-      measurementId: "G-GY0ELMJNL6"
+      apiKey: API_KEY,
+      authDomain: AUTH_DOMAIN,
+      projectId:PROJECT_ID,
+      storageBucket: STORAGE_BUCKET,
+      messagingSenderId: MESSAGINGSENDERID,
+      appId: APP_ID,
+      measurementId: MEASUREMENTID
     };
 
     // Initialize Firebase
@@ -171,7 +171,7 @@
     const err = document.getElementById('err');
     const msg = document.getElementById('msg');
     const subtitle = document.getElementById('subtitleTxt');
-    const googleBtn = document.getElementById('googleBtn');
+    // const googleBtn = document.getElementById('googleBtn');
 
     cta.addEventListener('click', () => {
       signingUp = !signingUp;
@@ -204,18 +204,18 @@
       }
     });
 
-    // Google Auth
-    googleBtn.addEventListener('click', async () => {
-      err.textContent = msg.textContent = '';
-      const provider = new GoogleAuthProvider();
-      try {
-        await signInWithPopup(auth, provider);
-        msg.textContent = signingUp ? 'Signed up with Google!' : 'Logged in with Google!';
-        window.location.href = 'index.html';
-      } catch (e) {
-        err.textContent = e.message.replace(/^Firebase: /, '');
-      }
-    });
+    // // Google Auth
+    // googleBtn.addEventListener('click', async () => {
+    //   err.textContent = msg.textContent = '';
+    //   const provider = new GoogleAuthProvider();
+    //   try {
+    //     await signInWithPopup(auth, provider);
+    //     msg.textContent = signingUp ? 'Signed up with Google!' : 'Logged in with Google!';
+    //     window.location.href = 'index.html';
+    //   } catch (e) {
+    //     err.textContent = e.message.replace(/^Firebase: /, '');
+    //   }
+    // });
 
     // Auth state listener
     onAuthStateChanged(auth, user => {
@@ -232,10 +232,10 @@
     </div>
     <div class="hello-title">Welcome, Mentormindz</div>
     <div class="subtitle" id="subtitleTxt">Create your account</div>
-    <button class="auth-btn google" id="googleBtn">
+    <!-- <button class="auth-btn google" id="googleBtn">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />
       Sign Up with Google
-    </button>
+    </button> -->
     <form id="mainForm">
       <input type="email" autocomplete="email" id="email" placeholder="Email address" required>
       <input type="password" autocomplete="current-password" id="password" placeholder="Password (min 6 chars)" minlength="6" required>
