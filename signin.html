@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Account Access - Connect & Collaborate</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=Fira+Sans:wght@600&display=swap">
+  <style>
+    :root {
+      --brand: #4158d0;
+      --accent: #c850c0;
+      --highlight: #ffcc70;
+      --white: #fff;
+      --fg: #222;
+      --bg: #f8f9fb;
+      --shadow: 0 4px 16px rgba(65,88,208,0.14);
+      --br: 30px;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      font-family: 'Inter', 'Fira Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg);
+    }
+    .card {
+      background: var(--white);
+      border-radius: var(--br);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 370px;
+      padding: 36px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .brand-logo {
+      background: linear-gradient(135deg, var(--brand) 60%, var(--accent) 100%);
+      border-radius: 50%;
+      width: 56px; height: 56px;
+      display: flex;
+      align-items: center; justify-content: center;
+      color: var(--white);
+      font-size: 1.9rem;
+      font-weight: 900;
+      box-shadow: 0 0 12px 4px #e7e7fa10;
+      margin-bottom: 8px;
+    }
+    .hello-title {
+      font-size: 1.35rem;
+      font-family: 'Fira Sans', sans-serif;
+      font-weight: 600;
+      color: var(--brand);
+      margin: 2px 0 0;
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 1rem;
+      color: #6c6e75;
+      margin-bottom: 23px;
+      text-align: center;
+      margin-top: 6px;
+    }
+    .auth-btn {
+      width: 100%;
+      height: 48px;
+      border-radius: 24px;
+      border: none;
+      margin-top: 0;
+      font-size: 1.06rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--brand);
+      color: var(--white);
+      box-shadow: 0 3px 8px #183acf12;
+      transition: background .19s;
+      cursor: pointer;
+      margin-bottom: 9px;
+    }
+    .auth-btn.google {
+      background: #fff;
+      color: #222;
+      border: 1px solid #e8eaf6;
+    }
+    .auth-btn.google:hover {
+      background: #f4f8ff;
+    }
+    .auth-btn:not(.google):hover {
+      background: var(--accent);
+    }
+    .auth-btn img {
+      width: 21px;
+      margin-right: 15px;
+    }
+    .switch-cta {
+      color: var(--brand);
+      background: none;
+      border: none;
+      font-size: 0.99rem;
+      margin: 13px auto 0;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: inherit;
+      font-weight: 500;
+      display: block;
+    }
+    form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+    }
+    input[type="email"], input[type="password"] {
+      background: #f4f6fa;
+      border-radius: 23px;
+      border: 1px solid #d4d6de;
+      height: 42px;
+      padding: 0 18px;
+      font-size: 1rem;
+      color: #25263a;
+    }
+    input[type="email"]:focus, input[type="password"]:focus {
+      outline: 2px solid var(--accent);
+    }
+    .err, .msg {
+      width: 100%;
+      padding: 8px 0 0;
+      font-size: 0.98rem;
+      text-align: center;
+    }
+    .err { color: #e0203f; }
+    .msg { color: #27b040; }
+    @media (max-width: 500px) {
+      .card { padding: 15vw 5vw; max-width: 100vw;}
+      .brand-logo { width: 48px;height:48px; font-size:1.2rem;}
+    }
+  </style>
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // Your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
+      authDomain: "mentormindz-8211a.firebaseapp.com",
+      projectId: "mentormindz-8211a",
+      storageBucket: "mentormindz-8211a.firebasestorage.app",
+      messagingSenderId: "913045756560",
+      appId: "1:913045756560:web:65cc21aca54ac1c2739615",
+      measurementId: "G-GY0ELMJNL6"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // UI Logic
+    let signingUp = true;
+    const form = document.getElementById('mainForm');
+    const mainBtn = document.getElementById('mainFormBtn');
+    const cta = document.getElementById('switchCta');
+    const err = document.getElementById('err');
+    const msg = document.getElementById('msg');
+    const subtitle = document.getElementById('subtitleTxt');
+    const googleBtn = document.getElementById('googleBtn');
+
+    cta.addEventListener('click', () => {
+      signingUp = !signingUp;
+      mainBtn.innerText = signingUp ? 'Sign Up' : 'Login';
+      googleBtn.innerText = signingUp ? 'Sign Up with Google' : 'Login with Google';
+      cta.innerText = signingUp ? 'Already have an account? Log In' : 'Need an account? Sign Up';
+      subtitle.textContent = signingUp
+        ? 'Create your account to unlock premium collaboration features.'
+        : 'Log in to your account and continue collaborating!';
+      err.textContent = msg.textContent = '';
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      err.textContent = msg.textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const pw = document.getElementById('password').value;
+      try {
+        let res;
+        if (signingUp) {
+          res = await createUserWithEmailAndPassword(auth, email, pw);
+          msg.textContent = 'Welcome! Account created.';
+        } else {
+          res = await signInWithEmailAndPassword(auth, email, pw);
+          msg.textContent = 'Successfully logged in!';
+        }
+        window.location.href = 'index.html'; // Redirect after success
+      } catch (e) {
+        err.textContent = e.message.replace(/^Firebase: /, '');
+      }
+    });
+
+    // Google Auth
+    googleBtn.addEventListener('click', async () => {
+      err.textContent = msg.textContent = '';
+      const provider = new GoogleAuthProvider();
+      try {
+        await signInWithPopup(auth, provider);
+        msg.textContent = signingUp ? 'Signed up with Google!' : 'Logged in with Google!';
+        window.location.href = 'index.html';
+      } catch (e) {
+        err.textContent = e.message.replace(/^Firebase: /, '');
+      }
+    });
+
+    // Auth state listener
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        window.location.href = 'index.html'; // Redirect if already logged in
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="card">
+    <div class="brand-logo">
+      <img src="logo_1.jpg" width="65px" height="65px">
+    </div>
+    <div class="hello-title">Welcome, Mentormindz</div>
+    <div class="subtitle" id="subtitleTxt">Create your account</div>
+    <button class="auth-btn google" id="googleBtn">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />
+      Sign Up with Google
+    </button>
+    <form id="mainForm">
+      <input type="email" autocomplete="email" id="email" placeholder="Email address" required>
+      <input type="password" autocomplete="current-password" id="password" placeholder="Password (min 6 chars)" minlength="6" required>
+      <button type="submit" class="auth-btn" id="mainFormBtn">Sign Up</button>
+    </form>
+    <button class="switch-cta" id="switchCta">Already have an account? Log In</button>
+    <div class="err" id="err"></div>
+    <div class="msg" id="msg"></div>
+  </div>
+</body>
+</html>
