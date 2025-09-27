@@ -118,6 +118,7 @@ fetchVideoAsFile();
 
 // Share video using Web Share API Level 2
 shareBtn.addEventListener("click", async () => {
+    fetchVideoAsFile();
   if (!currentFile) {
     alert("Please upload a video first!");
     return;
@@ -155,6 +156,7 @@ downloadBtn.addEventListener('click', () => {
 window.addEventListener('beforeunload', () => {
   if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
 });
+
 
 
 
