@@ -118,25 +118,37 @@ fetchVideoAsFile();
 
 // Share video using Web Share API Level 2
 shareBtn.addEventListener("click", async () => {
-    fetchVideoAsFile();
-  if (!currentFile) {
-    alert("Please upload a video first!");
-    return;
-  }
+  try {
+    const url = window.sharedVideoUrl;
+    if (!url || !url.startsWith('blob:')) {
+      throw new Error("Invalid or missing blob URL");
+    }
 
-  if (navigator.canShare && navigator.canShare({ files: [currentFile] })) {
-    try {
+    // Fetch the blob from the blob URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Failed to fetch blob from URL: " + response.statusText);
+    }
+    const blob = await response.blob();
+
+    // Create a File object from the blob
+    const videoFile = new File([blob], "shared_video.mp4", { type: blob.type || "video/mp4" });
+
+    // Check if sharing is supported
+    if (navigator.canShare && navigator.canShare({ files: [videoFile] })) {
       await navigator.share({
         title: "Shared Video",
         text: "Check out this video!",
-        files: [currentFile],
+        files: [videoFile],
       });
       console.log("Video shared successfully!");
-    } catch (err) {
-      console.error("Error sharing video:", err);
+    } else {
+      console.warn("File sharing not supported");
+      alert("File sharing is not supported on this browser. Try Chrome on Android or Safari on iOS 15+.");
     }
-  } else {
-    alert("File sharing is not supported on this browser.");
+  } catch (err) {
+    console.error("Error sharing video:", err);
+    alert("An error occurred while sharing: " + err.message);
   }
 });
 
@@ -156,6 +168,7 @@ downloadBtn.addEventListener('click', () => {
 window.addEventListener('beforeunload', () => {
   if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
 });
+
 
 
 
