@@ -148,7 +148,7 @@ shareBtn.addEventListener("click", async () => {
     }
   } catch (err) {
     console.error("Error sharing video:", err);
-    alert("An error occurred while sharing: " + err.message);
+    alert("An error occurred while sharing: no video generate");
   }
 });
 
@@ -168,6 +168,7 @@ downloadBtn.addEventListener('click', () => {
 window.addEventListener('beforeunload', () => {
   if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
 });
+
 
 
 
