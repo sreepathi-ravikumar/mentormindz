@@ -45,6 +45,7 @@
       const loginBtn = document.getElementById('customLoginBtn');
       loginBtn.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         closeSidebar();
         // Wait for sidebar animation to finish before redirecting
         setTimeout(() => {
@@ -168,6 +169,7 @@ downloadBtn.addEventListener('click', () => {
 window.addEventListener('beforeunload', () => {
   if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
 });
+
 
 
 
