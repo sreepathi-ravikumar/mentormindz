@@ -164,6 +164,7 @@ const response = await fetch('https://sreepathi-ravikumar-backendprocesssuper.hf
   source.src = url;
   video.setAttribute("controls", true);
   video.load();
+  window.sharedVideoUrl=url;
   } catch (error) {
     console.error('Error loading video:', error);
   }
