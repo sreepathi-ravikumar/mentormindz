@@ -49,12 +49,6 @@
       font-weight: 900;
       box-shadow: 0 0 12px 4px #e7e7fa10;
       margin-bottom: 8px;
-      overflow: hidden;
-    }
-    .brand-logo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
     }
     .hello-title {
       font-size: 1.35rem;
@@ -90,19 +84,15 @@
       cursor: pointer;
       margin-bottom: 9px;
     }
-    .auth-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
     .auth-btn.google {
       background: #fff;
       color: #222;
       border: 1px solid #e8eaf6;
     }
-    .auth-btn.google:hover:not(:disabled) {
+    .auth-btn.google:hover {
       background: #f4f8ff;
     }
-    .auth-btn:not(.google):hover:not(:disabled) {
+    .auth-btn:not(.google):hover {
       background: var(--accent);
     }
     .auth-btn img {
@@ -153,16 +143,76 @@
       .brand-logo { width: 48px;height:48px; font-size:1.2rem;}
     }
   </style>
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // Your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
+      authDomain: "mentormindz-8211a.firebaseapp.com",
+      projectId: "mentormindz-8211a",
+      storageBucket: "mentormindz-8211a.firebasestorage.app",
+      messagingSenderId: "913045756560",
+      appId: "1:913045756560:web:65cc21aca54ac1c2739615",
+      measurementId: "G-GY0ELMJNL6"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // UI Logic
+    const form = document.getElementById('mainForm');
+    const err = document.getElementById('err');
+    const msg = document.getElementById('msg');
+    const googleBtn = document.getElementById('googleBtn');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      err.textContent = msg.textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const pw = document.getElementById('password').value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pw);
+        msg.textContent = 'Successfully logged in!';
+        window.location.href = 'home.html'; // Redirect after success
+      } catch (e) {
+        err.textContent = e.message.replace(/^Firebase: /, '');
+      }
+    });
+
+    // Google Auth
+    googleBtn.addEventListener('click', async () => {
+      err.textContent = msg.textContent = '';
+      const provider = new GoogleAuthProvider();
+      try {
+        await signInWithPopup(auth, provider);
+        msg.textContent = 'Logged in with Google!';
+        window.location.href = 'home.html';
+      } catch (e) {
+        err.textContent = e.message.replace(/^Firebase: /, '');
+      }
+    });
+
+    // Auth state listener
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        window.location.href = 'home.html'; // Redirect if already logged in
+      }
+    });
+  </script>
 </head>
 <body>
   <div class="card">
     <div class="brand-logo">
-      <img src="logo_1.jpg" alt="Mentormindz Logo">
+      <img src="logo_1.jpg" width="65px" height="65px">
     </div>
     <div class="hello-title">Welcome Back, Mentormindz</div>
-    <div class="subtitle">Login to your account</div>
+    <div class="subtitle" id="subtitleTxt">Login to your account</div>
     <button class="auth-btn google" id="googleBtn">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />
       Login with Google
     </button>
     <form id="mainForm">
@@ -170,108 +220,10 @@
       <input type="password" autocomplete="current-password" id="password" placeholder="Password" minlength="6" required>
       <button type="submit" class="auth-btn" id="mainFormBtn">Login</button>
     </form>
-    <button class="switch-cta" onclick="location.href='signin.html'">Don't have an account? Sign Up</button>
+    <button class="switch-cta" id="switchCta" onclick="location.href='signin.html'">Don't have an account? Sign Up</button>
     <div class="err" id="err"></div>
     <div class="msg" id="msg"></div>
   </div>
-
-  <script>
-    const WORKER_URL = 'https://gateway3.rksreepathi1.workers.dev';
-
-    const form = document.getElementById('mainForm');
-    const err = document.getElementById('err');
-    const msg = document.getElementById('msg');
-    const googleBtn = document.getElementById('googleBtn');
-    const submitBtn = document.getElementById('mainFormBtn');
-
-    // Check for OAuth callback
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const idToken = urlParams.get('idToken');
-      const error = urlParams.get('error');
-      
-      if (idToken) {
-        localStorage.setItem('authToken', idToken);
-        msg.textContent = 'Successfully logged in!';
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => window.location.href = 'index.html', 1000);
-      } else if (error) {
-        err.textContent = decodeURIComponent(error);
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } else {
-        checkAuth();
-      }
-    });
-
-    async function checkAuth() {
-      const token = localStorage.getItem('authToken');
-      if (!token) return;
-
-      try {
-        const resp = await fetch(`${WORKER_URL}/check-auth`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken: token })
-        });
-
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.valid) {
-            window.location.href = 'index.html';
-          } else {
-            localStorage.removeItem('authToken');
-          }
-        } else {
-          localStorage.removeItem('authToken');
-        }
-      } catch (e) {
-        console.error('Auth check failed:', e);
-        localStorage.removeItem('authToken');
-      }
-    }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      err.textContent = '';
-      msg.textContent = '';
-      
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Logging in...';
-
-      try {
-        const resp = await fetch(`${WORKER_URL}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-
-        const data = await resp.json();
-
-        if (resp.ok && data.idToken) {
-          msg.textContent = 'Successfully logged in!';
-          localStorage.setItem('authToken', data.idToken);
-          localStorage.setItem('userEmail', data.email || email);
-          setTimeout(() => window.location.href = 'index.html', 500);
-        } else {
-          err.textContent = data.error || 'Login failed';
-        }
-      } catch (e) {
-        err.textContent = 'Network error. Please try again.';
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Login';
-      }
-    });
-
-    googleBtn.addEventListener('click', () => {
-      googleBtn.disabled = true;
-      googleBtn.textContent = 'Redirecting...';
-      const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
-      window.location.href = `${WORKER_URL}/google-login?redirect=${redirect}`;
-    });
-  </script>
 </body>
 </html>
+
