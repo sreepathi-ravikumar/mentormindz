@@ -113,6 +113,7 @@ sendButton.addEventListener('click', () => {
           chatInput.value = transcript;
           updateSendIcon();
           streamResponse(transcript);
+          chatInput.value = '';
         }
       };
       recognition.onerror = (event) => {
