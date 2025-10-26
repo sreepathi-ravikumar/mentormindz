@@ -153,21 +153,37 @@ shareBtn.addEventListener("click", async () => {
   }
 });
 
-downloadBtn.addEventListener('click', () => {
-  const videoSrc = videoPlayer.currentSrc || videoPlayer.src;
-  if (!videoSrc) return;
-  const src = videoBlobURL || videoSrc;
-  const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
-  const a = document.createElement('a');
-  a.href = src;
-  a.download = dlName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-});
+downloadBtn.addEventListener('click', async () => {
+  try {
+    const url = window.sharedVideoUrl;
+    if (!url) {
+      alert("No video available to download!");
+      return;
+    }
 
-window.addEventListener('beforeunload', () => {
-  if (videoBlobURL) URL.revokeObjectURL(videoBlobURL);
+    // Fetch the blob (works with both blob: URLs and regular URLs)
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Failed to fetch video for download: " + response.statusText);
+    }
+
+    const blob = await response.blob();
+    const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
+
+    // Create temporary link and trigger download
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = dlName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    // Cleanup
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    console.error("Error downloading video:", err);
+    alert("An error occurred while downloading the video.");
+  }
 });
 
 
