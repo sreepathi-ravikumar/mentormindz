@@ -306,46 +306,50 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
       throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
 
-    const reader = response.body.getReader();
+      const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    let fullResponse = '';
-    let displayContent = '';
-    let isEnglish = true;
+    let fullResponse = ''; // Background storage for complete response
+    let displayContent = ''; // Content to display (English only)
+    let isEnglish = true; // Flag to track if still in English
 
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n\n');
+      const lines = buffer.split('\n');
 
       for (let i = 0; i < lines.length - 1; i++) {
         const line = lines[i].trim();
         if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim();
+          const data = line.slice(6);
           if (data === '[DONE]') {
+            // Final render
             noteToggle.innerHTML = marked.parse(displayContent);
             input = fullResponse + "&&&" + selectedLanguage.trim();
-            console.log("Image Input:", input);
+            console.log(input);
+            // Available for later use
             return;
           }
 
           try {
             const content = JSON.parse(data);
-            fullResponse += content;
+            fullResponse += content; // Always store
             if (isEnglish) {
-              if (/[^-]/.test(content)) {
+              // Detect non-English (non-ASCII chars)
+              if (/[^\x00-\x7F]/.test(content)) {
                 isEnglish = false;
               } else {
                 displayContent += content;
-                noteToggle.innerHTML = marked.parse(displayContent);
+                noteToggle.innerHTML = marked.parse(displayContent); // Update display with markdown
               }
             }
           } catch (e) {
+            // If not JSON, add raw
             fullResponse += data;
             if (isEnglish) {
-              if (/[^-]/.test(data)) {
+              if (/[^\x00-\x7F]/.test(data)) {
                 isEnglish = false;
               } else {
                 displayContent += data;
@@ -359,7 +363,7 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     }
   } catch (e) {
     if (e.name === 'AbortError') {
-      noteToggle.innerHTML = marked.parse(displayContent) + '[Stopped by user]';
+      noteToggle.innerHTML = marked.parse(displayContent) + '\n[Stopped by user]';
     } else {
       out.innerHTML = `Error: ${e.message}`;
       console.error('Stream error:', e);
@@ -368,6 +372,7 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     controller = null;
   }
 }
+
 
 async function streamResponse(userPrompt = '') {
   const video = document.getElementById("myVideo");
