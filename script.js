@@ -87,7 +87,7 @@ actionRadios.forEach(btn => {
   });
 });*/
 // Send message or voice
-let uploadedImageUrl = null;
+let uploadedImageFile = null;
 sendButton.addEventListener('click', () => {
   if (sendIcon.classList.contains('fa-microphone')) {
     // Voice input
@@ -170,6 +170,7 @@ async function loadVideo() {
 // Example: loadVideo();
 
 const BACKEND_URL = "https://sreepathi-ravikumar-sample1.hf.space/ask";
+const BACKEND_URL_IMAGE = "https://sreepathi-ravikumar-sample1.hf.space/askimage";
 const out = document.getElementById("response");
 
 let controller = null;
@@ -275,13 +276,10 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
   }
 }
 
-async function streamAskImage(question, selectedLanguage, selectedMode) {
+async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
   panelEl.classList.add("opened", "default-size");
   overlayEl.classList.add("show");
-  out.innerHTML = '<div class="loading-squares"><span></span><span></span><span></span></div>';
-  controller = new AbortController();
-
-  // Add toggle structure
+  
   out.innerHTML = `
     <details open style="margin: 10px 0;">
       <summary style="cursor: pointer; font-weight: bold;">View Note</summary>
@@ -289,12 +287,18 @@ async function streamAskImage(question, selectedLanguage, selectedMode) {
     </details>
   `;
   const noteToggle = document.getElementById("note-toggle");
+  
+  controller = new AbortController();
 
   try {
-    const response = await fetch(BACKEND_URL, {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('selectedLanguage', selectedLanguage);
+    formData.append('selectedMode', selectedMode);
+
+    const response = await fetch(BACKEND_URL_IMAGE, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: question, selectedLanguage: selectedLanguage, selectedMode: selectedMode }),
+      body: formData,
       signal: controller.signal
     });
 
@@ -305,47 +309,43 @@ async function streamAskImage(question, selectedLanguage, selectedMode) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    let fullResponse = ''; // Background storage for complete response
-    let displayContent = ''; // Content to display (English only)
-    let isEnglish = true; // Flag to track if still in English
+    let fullResponse = '';
+    let displayContent = '';
+    let isEnglish = true;
 
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
+      const lines = buffer.split('\n\n');
 
       for (let i = 0; i < lines.length - 1; i++) {
         const line = lines[i].trim();
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+          const data = line.slice(6).trim();
           if (data === '[DONE]') {
-            // Final render
             noteToggle.innerHTML = marked.parse(displayContent);
             input = fullResponse + "&&&" + selectedLanguage.trim();
-            console.log(input);
-            // Available for later use
+            console.log("Image Input:", input);
             return;
           }
 
           try {
             const content = JSON.parse(data);
-            fullResponse += content; // Always store
+            fullResponse += content;
             if (isEnglish) {
-              // Detect non-English (non-ASCII chars)
-              if (/[^\x00-\x7F]/.test(content)) {
+              if (/[^-]/.test(content)) {
                 isEnglish = false;
               } else {
                 displayContent += content;
-                noteToggle.innerHTML = marked.parse(displayContent); // Update display with markdown
+                noteToggle.innerHTML = marked.parse(displayContent);
               }
             }
           } catch (e) {
-            // If not JSON, add raw
             fullResponse += data;
             if (isEnglish) {
-              if (/[^\x00-\x7F]/.test(data)) {
+              if (/[^-]/.test(data)) {
                 isEnglish = false;
               } else {
                 displayContent += data;
@@ -359,7 +359,7 @@ async function streamAskImage(question, selectedLanguage, selectedMode) {
     }
   } catch (e) {
     if (e.name === 'AbortError') {
-      noteToggle.innerHTML = marked.parse(displayContent) + '\n[Stopped by user]';
+      noteToggle.innerHTML = marked.parse(displayContent) + '[Stopped by user]';
     } else {
       out.innerHTML = `Error: ${e.message}`;
       console.error('Stream error:', e);
@@ -379,20 +379,26 @@ async function streamResponse(userPrompt = '') {
 
   out.innerHTML = '<div class="loading-squares"><span></span><span></span><span></span></div>';
 
-  if (uploadedImageUrl) {
-    const question = uploadedImageUrl;
-    await streamAskImage(question, selectedLanguage, selectedMode);
-    uploadedImageUrl = null;
+  if (uploadedImageFile) {
+    await streamAskImage(uploadedImageFile, selectedLanguage, selectedMode);
+    uploadedImageFile = null;
     chatInput.value = '';
-  } else {
-    const question = userPrompt.trim() || "Say hello in one sentence.";
+  }
+  else {
+    // Text-only request - send to /ask
+    const question = userPrompt.trim() || chatInput.value.trim() || "Say hello in one sentence.";
     if (!question) {
       out.innerHTML = "⚠️ Please enter a prompt.";
       return;
     }
     await streamAsk(question, selectedLanguage, selectedMode);
   }
-  loadVideo();
+  
+
+    loadVideo();
+  
+  
+  updateSendIcon();
 }
 
 if (window.visualViewport) {
@@ -437,30 +443,16 @@ cameraOpt.addEventListener('click', () => {
 });
 // Handle uploads
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-  });
-}
 
-async function handleUpload(e) {
+
+function handleUpload(e) {
   const file = e.target.files[0];
   if (file && file.type.startsWith('image/')) {
-    try {
-      const base64 = await fileToBase64(file);
-      uploadedImageUrl = base64;
-      chatInput.value = `Image uploaded: ${file.name}`;
-      // Automatically send to backend
-      streamResponse();
-    } catch (error) {
-      console.error('Upload error:', error);
-      chatInput.value = `Error uploading image: ${file.name}`;
-    }
+    uploadedImageFile = file;
+    chatInput.value = `📷 Image uploaded: ${file.name}`;
+    updateSendIcon();
   } else if (file) {
-    chatInput.value = `File uploaded: ${file.name} (not an image, no AI analysis)`;
+    chatInput.value = `File uploaded: ${file.name} (not an image)`;
   }
 }
 document.getElementById('upload-image').addEventListener('change', handleUpload);
