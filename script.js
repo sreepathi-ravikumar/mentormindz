@@ -170,8 +170,6 @@ async function loadVideo() {
   }
 }
 async function loadVideomath() {
-  console.log(fullResponse);
-  alert(fullResponse)
   if (panelEl) panelEl.classList.remove("opened");
   if (overlayEl) overlayEl.classList.remove("show");
 
@@ -413,7 +411,7 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
             // Final render
             noteToggle.innerHTML = marked.parse(displayContent);
             input = fullResponse + "&&&" + selectedLanguage.trim();
-            console.log(input);
+
             // Available for later use
             return;
           }
@@ -669,7 +667,6 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
             // Final render
             noteToggle.innerHTML = marked.parse(displayContent);
             input = fullResponse + "&&&" + selectedLanguage.trim();
-            console.log(input);
             // Available for later use
             return;
           }
