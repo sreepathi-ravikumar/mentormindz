@@ -476,19 +476,18 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
  
   controller = new AbortController();
   
-    if (selectedMode=="Solve Smart"){
+  if (selectedMode == "Solve Smart") {
+    try {
+      const formData = new FormData();
+      formData.append('image', imageFile);
+      formData.append('selectedLanguage', selectedLanguage);
+      formData.append('selectedMode', selectedMode);
+      const response = await fetch(BACKEND_URL_IMAGE, {
+        method: "POST",
+        body: formData,
+        signal: controller.signal
+      });
 
-  try {
-  
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    formData.append('selectedLanguage', selectedLanguage);
-    formData.append('selectedMode', selectedMode);
-    const response = await fetch(BACKEND_URL_IMAGE, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal
-    });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
@@ -760,31 +759,62 @@ function closeSettings() {
 }
 // Attachment options
 const imageOpt = document.querySelector('.image-opt');
-// const fileOpt = document.querySelector('.file-opt');
 const cameraOpt = document.querySelector('.camera-opt');
 imageOpt.addEventListener('click', () => {
   document.getElementById('upload-image').click();
   closeSettings();
 });
-// fileOpt.addEventListener('click', () => {
-// document.getElementById('upload-file').click();
-// closeSettings();
-// });
+
 cameraOpt.addEventListener('click', () => {
   document.getElementById('take-photo').click();
   closeSettings();
 });
-// Handle uploads
+
+// Handle uploads with image resizing to fix low memory issues and improve speed
 function handleUpload(e) {
   const file = e.target.files[0];
   if (file && file.type.startsWith('image/')) {
-    uploadedImageFile = file;
-    chatInput.value = `📷 Image uploaded: ${file.name}`;
-    updateSendIcon();
+    // Create a resized/compressed version to avoid low memory errors (esp. on mobile camera)
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set max dimensions to prevent memory issues (adjust as needed)
+        const maxWidth = 1024;
+        const maxHeight = 1024;
+        let { width, height } = img;
+        
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width *= ratio;
+          height *= ratio;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress (quality 0.85)
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(function(blob) {
+          const resizedFile = new File([blob], file.name, { type: 'image/jpeg' });
+          uploadedImageFile = resizedFile;
+          chatInput.value = `📷 Image uploaded: ${file.name} (resized for speed)`;
+          updateSendIcon();
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   } else if (file) {
+    uploadedImageFile = file;
     chatInput.value = `File uploaded: ${file.name} (not an image)`;
+    updateSendIcon();
   }
 }
+
 document.getElementById('upload-image').addEventListener('change', handleUpload);
 document.getElementById('take-photo').addEventListener('change', handleUpload);
 // document.getElementById('upload-file').addEventListener('change', handleUpload);
