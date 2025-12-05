@@ -168,7 +168,7 @@ downloadBtn.addEventListener('click', async () => {
     }
 
     const blob = await response.blob();
-    const dlName = currentFile ? currentFile.name : fileName || 'video.mp4';
+    const dlName = 'mentormindzailearning.mp4';
 
     // Create temporary link and trigger download
     const a = document.createElement('a');
@@ -185,6 +185,7 @@ downloadBtn.addEventListener('click', async () => {
     alert("An error occurred while downloading the video.");
   }
 });
+
 
 
 
