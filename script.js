@@ -827,7 +827,7 @@ document.querySelector('.sidebar-settings').addEventListener('click', () => {
 const settingsSheet = document.getElementById("settingsSheet");
 const languageList = document.getElementById("languageList");
 const allLanguages = [
-  'English','Tamil','Hindi','Malayalam','Kannada','Telugu','Bengali','Marathi','Gujarati','Punjabi','Urdu','French','German','Spanish','Italian','Russian','Japanese','Korean','Chinese','Arabic','Portuguese','Dutch','Greek','Hebrew','Turkish','Polish','Thai','Vietnamese','Swedish','Finnish','Czech','Hungarian'
+  'English', 'Hindi', 'Chinese', 'Spanish', 'Arabic', 'French', 'Bengali', 'Portuguese', 'Russian', 'Tamil'
 ];
 // Show Languages
 function filterLanguages(query) {
