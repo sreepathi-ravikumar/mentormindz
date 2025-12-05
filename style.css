@@ -278,7 +278,7 @@ body {
     }
     .settings-menu {
       position: fixed;
-      bottom: -100px;
+      bottom: -150px;
       left: 0;
       right: 0;
       background: var(--white);
