@@ -771,9 +771,9 @@ imageOpt.addEventListener('click', () => {
 // closeSettings();
 // });
 //cameraOpt.addEventListener('click', () => {
-  document.getElementById('take-photo').click();
-  closeSettings();
-});
+  //document.getElementById('take-photo').click();
+  //closeSettings();
+//});
 // Handle uploads
 function handleUpload(e) {
   const file = e.target.files[0];
