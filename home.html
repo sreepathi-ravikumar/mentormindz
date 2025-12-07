@@ -10,7 +10,141 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<!-- KaTeX JS -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   <link rel="stylesheet" type="text/css" href="style.css" />
+   <style>
+  /* Math Content Styling */
+  .math-content-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.8;
+  }
+
+  /* Title Styling */
+  .content-title h1 {
+    font-size: 2em;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 1.5em 0 1em 0;
+    padding-bottom: 0.5em;
+    border-bottom: 2px solid #e0e0e0;
+  }
+
+  /* Text Styling */
+  .content-text {
+    margin: 1.2em 0;
+    font-size: 1.1em;
+    color: #333;
+  }
+
+  .content-text p {
+    margin: 0.8em 0;
+    line-height: 1.7;
+  }
+
+  /* Equation Styling */
+  .content-equation {
+    margin: 2em 0;
+    padding: 1.5em;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 8px;
+    border-left: 4px solid #4a90e2;
+    overflow-x: auto;
+  }
+
+  /* KaTeX Display Math */
+  .katex-display {
+    margin: 1em 0 !important;
+    text-align: center;
+    font-size: 1.3em !important;
+  }
+
+  /* KaTeX Inline Math */
+  .katex {
+    font-size: 1.15em !important;
+    color: #2c3e50;
+  }
+
+  /* Math in Titles */
+  .content-title .katex {
+    font-size: 1.2em !important;
+    color: #1a1a1a;
+  }
+
+  /* Code Blocks */
+  .content-code {
+    margin: 1.5em 0;
+    background: #282c34;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .content-code pre {
+    margin: 0;
+    padding: 1.5em;
+    overflow-x: auto;
+  }
+
+  .content-code code {
+    color: #abb2bf;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95em;
+    line-height: 1.6;
+  }
+
+  /* List Styling */
+  .content-list {
+    margin: 1em 0;
+    padding-left: 2em;
+  }
+
+  /* Error Messages */
+  .error-message {
+    margin-top: 2em;
+    padding: 1em;
+    background: #fee;
+    border-left: 4px solid #c00;
+    border-radius: 4px;
+    color: #c00;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .math-content-wrapper {
+      padding: 15px;
+    }
+    
+    .content-title h1 {
+      font-size: 1.6em;
+    }
+    
+    .katex-display {
+      font-size: 1.1em !important;
+    }
+  }
+
+  /* Improve equation readability */
+  .content-equation .katex-display > .katex {
+    text-align: left;
+    white-space: normal;
+  }
+
+  /* Fraction and complex expression spacing */
+  .katex .mfrac {
+    margin: 0.2em 0;
+  }
+
+  /* Superscript and subscript clarity */
+  .katex .msupsub {
+    vertical-align: baseline;
+  }
+</style>
 </head>
 <body>
   <div class="app-container">
@@ -56,7 +190,7 @@
     <div class="chat-box-container">
       <div class="chat-box">
         <button class="settings-button" onclick="toggleSheet()"><i class="fa-solid fa-gear"></i></button>
-        <input type="text" placeholder="Ask anything" class="chat-input" />
+        <input type="text" placeholder="Ask anything" class="chat-input" autofocus/>
         <button class="file"><i class="fa-solid fa-camera"></i></button>
         <button class="send"><i class="fa-solid fa-microphone"></i></button>
       </div>
