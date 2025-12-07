@@ -227,155 +227,245 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
   if (selectedMode=="Solve Smart"){
 
   try {
-    const response = await fetch(BACKEND_URL_TEXT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, selectedLanguage, selectedMode }),
-      signal: controller.signal
-    });
+  const response = await fetch(BACKEND_URL_TEXT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, selectedLanguage, selectedMode }),
+    signal: controller.signal
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  // Buffers / state
+  let buffer = "";
+  let fullResponseRaw = "";
+  let englishBlock = "";
+  let tamilBlock = "";
+  let tamilStarted = false;
+
+  let parsedList = [];
+  let displayContent = "";
+
+  // Helper: normalize incoming chunk
+  function normalizeChunk(data) {
+    try {
+      const parsed = JSON.parse(data);
+      if (typeof parsed === "string") return parsed;
+      return JSON.stringify(parsed);
+    } catch {
+      let s = data.replace(/^"+|"+$/g, "");
+      s = s.replace(/\\"/g, '"');
+      s = s.replace(/\\n/g, "\n");
+      s = s.replace(/\\t/g, "\t");
+      return s;
     }
+  }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+  // Helper: Remove # and % symbols
+  function processLatexText(text) {
+    if (!text) return "";
+    return text
+      .replace(/#%/g, '')  // Remove #% combination first
+      .replace(/#/g, '')   // Remove all # symbols
+      .replace(/%/g, '')   // Remove all % symbols
+      .trim();
+  }
 
-    // Buffers / state
-    let buffer = "";
-    let fullResponseRaw = "";   // ALWAYS append cleaned chunk here (final full response)
-    let englishBlock = "";      // English array section before &&&& (cleaned)
-    let tamilBlock = "";        // Tamil section after &&&& (cleaned)
-    let tamilStarted = false;
+  // Helper: Format content items
+  function formatContentItem(item) {
+    if (!Array.isArray(item) || item.length < 2) return "";
+    
+    const [type, content] = item;
+    const processed = processLatexText(content);
+    
+    // Skip empty content
+    if (!processed) return "";
+    
+    switch (type) {
+      case "title":
+        return `<div class="content-title">
+          <h1>${processed}</h1>
+        </div>`;
+      
+      case "text":
+        return `<div class="content-text">
+          <p>${processed}</p>
+        </div>`;
+      
+      case "equation":
+        return `<div class="content-equation">
+          $$${processed}$$
+        </div>`;
+      
+      case "code":
+        return `<div class="content-code">
+          <pre><code>${content}</code></pre>
+        </div>`;
+      
+      case "list":
+        return `<div class="content-list">
+          ${processed}
+        </div>`;
+      
+      default:
+        return `<div class="content-default">
+          <p>${processed}</p>
+        </div>`;
+    }
+  }
 
-    let parsedList = [];        // parsed nested list when possible
-    let displayContent = "";    // joined second elements for UI
-
-    // Helper: try to safely parse / normalize incoming 'data' string
-    function normalizeChunk(data) {
-      // 1) Try JSON.parse safely. If it yields object -> stringify, if string -> use it.
+  // Helper: Render LaTeX in DOM element (FIXED VERSION)
+  function renderLatexInElement(element) {
+    if (typeof renderMathInElement !== 'undefined') {
       try {
-        const parsed = JSON.parse(data);
-        if (typeof parsed === "string") return parsed;
-        // if it's an object/array/number/boolean -> stringify to stable string
-        return JSON.stringify(parsed);
-      } catch {
-        // 2) If JSON.parse fails, clean double-escaped wrapping quotes and common escape sequences
-        // Remove only matching leading/trailing quotes (one or many)
-        let s = data.replace(/^"+|"+$/g, "");
-        // Convert escaped quotes \" => "
-        s = s.replace(/\\"/g, '"');
-        // Unescape common escaped newlines \n -> actual newline
-        s = s.replace(/\\n/g, "\n");
-        // Unescape escaped tabs etc if present
-        s = s.replace(/\\t/g, "\t");
-        return s;
+        // Call renderMathInElement on the actual DOM element
+        renderMathInElement(element, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false,
+          errorColor: '#cc0000',
+          trust: true,
+          strict: false,
+          macros: {
+            "\\RR": "\\mathbb{R}",
+            "\\NN": "\\mathbb{N}",
+            "\\ZZ": "\\mathbb{Z}",
+            "\\QQ": "\\mathbb{Q}"
+          }
+        });
+      } catch (e) {
+        console.error("KaTeX rendering error:", e);
       }
-    }
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-
-      for (let i = 0; i < lines.length - 1; i++) {
-        const line = lines[i].trim();
-        if (!line.startsWith("data: ")) continue;
-        const rawData = line.slice(6);
-
-        if (rawData === "[DONE]") {
-          // Finalize full response using the raw canonical accumulator
-          fullResponse = fullResponseRaw;
-          console.log("Final stored input:", fullResponse);
-
-          // Try final parse of englishBlock to extract display content (defensive)
-          try {
-            parsedList = JSON.parse(englishBlock);
-            displayContent = parsedList
-              .filter(item => Array.isArray(item) && item.length >= 2)
-              .map(item => item[1])
-              .join("\n\n");
-          } catch (e) {
-            // If parsing fails, fallback: try to extract second elements with regex (best-effort)
-            console.warn("Final JSON parse failed, falling back:", e);
-            // naive fallback: find matches of ["type","content",...]
-            const fallbackMatches = [...englishBlock.matchAll(/\[ *"(?:[^"\\]|\\.)*" *, *"(?:[^"\\]|\\.)*"/g)];
-            displayContent = fallbackMatches
-              .map(m => {
-                const inner = m[0];
-                const parts = inner.split(/",\s*"/).map(p => p.replace(/^\[ *"/, "").replace(/"$/, ""));
-                return parts[1] || "";
-              })
-              .join("\n\n");
-          }
-
-          noteToggle.innerHTML = marked.parse(displayContent);
-          // Optionally you might want to store fullResponse somewhere global:
-          window.LAST_FULL_RESPONSE = fullResponse;
-          return;
-        }
-
-        // Normalize incoming chunk in a single canonical string form
-        const clean = normalizeChunk(rawData);
-
-        // Append to canonical full response => ALWAYS
-        fullResponseRaw += clean;
-
-        // If separator exists inside this chunk, split and route pieces
-        if (!tamilStarted && clean.includes("&&&&")) {
-          tamilStarted = true;
-          const [before, after] = clean.split("&&&&", 2);
-          englishBlock += before;
-          tamilBlock += after || "";
-        } else {
-          if (!tamilStarted) {
-            englishBlock += clean;
-          } else {
-            tamilBlock += clean;
-          }
-        }
-
-        // Try parsing the englishBlock progressively to update the live UI.
-        // This will succeed only once englishBlock contains a valid JSON array.
-        try {
-          const arr = JSON.parse(englishBlock);
-          if (Array.isArray(arr)) {
-            parsedList = arr;
-            // Build displayContent from second element of each inner list
-            displayContent = arr
-              .filter(item => Array.isArray(item) && item.length >= 2)
-              .map(item => item[1])
-              .join("\n\n");
-
-            // Progressive update
-            noteToggle.innerHTML = marked.parse(displayContent);
-          }
-        } catch {
-          // Not yet a complete JSON — ignore and wait for more chunks
-        }
-      }
-
-      // leftover partial line remains in buffer
-      buffer = lines[lines.length - 1];
-    }
-
-  } catch (e) {
-    // show what we have so far
-    noteToggle.innerHTML = marked.parse(
-      (typeof displayContent === "string" ? displayContent : "") + "\n\n[Error / Stopped]"
-    );
-
-    if (e.name === "AbortError") {
-      console.warn("Request aborted by user.");
     } else {
-      out.innerHTML = `Error: ${e.message}`;
-      console.error("Stream error:", e);
+      console.warn("renderMathInElement is not available. Make sure KaTeX auto-render is loaded.");
     }
-  } finally {
-    controller = null;
-  }}
+  }
+
+  // Helper: Build display content from parsed array
+  function buildDisplayContent(arr) {
+    const items = arr
+      .filter(item => Array.isArray(item) && item.length >= 2)
+      .map(formatContentItem)
+      .filter(html => html.trim() !== "") // Remove empty items
+      .join("\n");
+    
+    return `<div class="math-content-wrapper">${items}</div>`;
+  }
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+
+    for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      if (!line.startsWith("data: ")) continue;
+      const rawData = line.slice(6);
+
+      if (rawData === "[DONE]") {
+        fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
+        console.log("Final stored input:", fullResponse);
+
+        try {
+          // Parse the JSON
+          parsedList = JSON.parse(englishBlock);
+          
+          if (Array.isArray(parsedList) && parsedList.length > 0) {
+            // Build HTML content
+            const htmlContent = buildDisplayContent(parsedList);
+            displayContent = htmlContent;
+            
+            // STEP 1: Set HTML first
+            noteToggle.innerHTML = htmlContent;
+            
+            // STEP 2: Then render LaTeX on the DOM element
+            renderLatexInElement(noteToggle);
+            
+            console.log("Rendering complete with LaTeX!");
+          } else {
+            throw new Error("Parsed result is not a valid array");
+          }
+        } catch (e) {
+          console.error("JSON parse error:", e);
+          console.log("English block:", englishBlock);
+          
+          noteToggle.innerHTML = `<div class="error-message">
+            <p><strong>Content processing error</strong></p>
+            <p>Error: ${e.message}</p>
+          </div>`;
+        }
+
+        window.LAST_FULL_RESPONSE = fullResponse;
+        window.LAST_PARSED_DATA = {
+          english: parsedList,
+          tamil: tamilBlock.trim()
+        };
+        
+        return;
+      }
+
+      const clean = normalizeChunk(rawData);
+      fullResponseRaw += clean;
+
+      if (!tamilStarted && clean.includes("&&&&")) {
+        tamilStarted = true;
+        const [before, after] = clean.split("&&&&", 2);
+        englishBlock += before;
+        tamilBlock += after || "";
+      } else {
+        if (!tamilStarted) {
+          englishBlock += clean;
+        } else {
+          tamilBlock += clean;
+        }
+      }
+
+      // Progressive rendering
+      try {
+        const arr = JSON.parse(englishBlock);
+        
+        if (Array.isArray(arr) && arr.length > 0) {
+          parsedList = arr;
+          const htmlContent = buildDisplayContent(arr);
+          displayContent = htmlContent;
+          
+          // STEP 1: Set HTML first
+          noteToggle.innerHTML = htmlContent;
+          
+          // STEP 2: Then render LaTeX
+          renderLatexInElement(noteToggle);
+        }
+      } catch (parseError) {
+        // Not ready yet, silent fail during progressive parsing
+      }
+    }
+
+    buffer = lines[lines.length - 1];
+  }
+
+} catch (e) {
+  const errorContent = displayContent || "<p>An error occurred</p>";
+  noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
+
+  if (e.name === "AbortError") {
+    console.warn("Request aborted by user.");
+  } else {
+    console.error("Stream error:", e);
+  }
+} finally {
+  controller = null;
+}}
   else{
      try {
     const response = await fetch(BACKEND_URL_TEXT, {
@@ -478,159 +568,246 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
   
     if (selectedMode=="Solve Smart"){
 
-  try {
-  
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    formData.append('selectedLanguage', selectedLanguage);
-    formData.append('selectedMode', selectedMode);
-    const response = await fetch(BACKEND_URL_IMAGE, {
-      method: "POST",
-      body: formData,
-      signal: controller.signal
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+ try {
+  const response = await fetch(BACKEND_URL_TEXT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, selectedLanguage, selectedMode }),
+    signal: controller.signal
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  // Buffers / state
+  let buffer = "";
+  let fullResponseRaw = "";
+  let englishBlock = "";
+  let tamilBlock = "";
+  let tamilStarted = false;
+
+  let parsedList = [];
+  let displayContent = "";
+
+  // Helper: normalize incoming chunk
+  function normalizeChunk(data) {
+    try {
+      const parsed = JSON.parse(data);
+      if (typeof parsed === "string") return parsed;
+      return JSON.stringify(parsed);
+    } catch {
+      let s = data.replace(/^"+|"+$/g, "");
+      s = s.replace(/\\"/g, '"');
+      s = s.replace(/\\n/g, "\n");
+      s = s.replace(/\\t/g, "\t");
+      return s;
     }
+  }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+  // Helper: Remove # and % symbols
+  function processLatexText(text) {
+    if (!text) return "";
+    return text
+      .replace(/#%/g, '')  // Remove #% combination first
+      .replace(/#/g, '')   // Remove all # symbols
+      .replace(/%/g, '')   // Remove all % symbols
+      .trim();
+  }
 
-    // Buffers / state
-    let buffer = "";
-    let fullResponseRaw = "";   // ALWAYS append cleaned chunk here (final full response)
-    let englishBlock = "";      // English array section before &&&& (cleaned)
-    let tamilBlock = "";        // Tamil section after &&&& (cleaned)
-    let tamilStarted = false;
+  // Helper: Format content items
+  function formatContentItem(item) {
+    if (!Array.isArray(item) || item.length < 2) return "";
+    
+    const [type, content] = item;
+    const processed = processLatexText(content);
+    
+    // Skip empty content
+    if (!processed) return "";
+    
+    switch (type) {
+      case "title":
+        return `<div class="content-title">
+          <h1>${processed}</h1>
+        </div>`;
+      
+      case "text":
+        return `<div class="content-text">
+          <p>${processed}</p>
+        </div>`;
+      
+      case "equation":
+        return `<div class="content-equation">
+          $$${processed}$$
+        </div>`;
+      
+      case "code":
+        return `<div class="content-code">
+          <pre><code>${content}</code></pre>
+        </div>`;
+      
+      case "list":
+        return `<div class="content-list">
+          ${processed}
+        </div>`;
+      
+      default:
+        return `<div class="content-default">
+          <p>${processed}</p>
+        </div>`;
+    }
+  }
 
-    let parsedList = [];        // parsed nested list when possible
-    let displayContent = "";    // joined second elements for UI
-
-    // Helper: try to safely parse / normalize incoming 'data' string
-    function normalizeChunk(data) {
-      // 1) Try JSON.parse safely. If it yields object -> stringify, if string -> use it.
+  // Helper: Render LaTeX in DOM element (FIXED VERSION)
+  function renderLatexInElement(element) {
+    if (typeof renderMathInElement !== 'undefined') {
       try {
-        const parsed = JSON.parse(data);
-        if (typeof parsed === "string") return parsed;
-        // if it's an object/array/number/boolean -> stringify to stable string
-        return JSON.stringify(parsed);
-      } catch {
-        // 2) If JSON.parse fails, clean double-escaped wrapping quotes and common escape sequences
-        // Remove only matching leading/trailing quotes (one or many)
-        let s = data.replace(/^"+|"+$/g, "");
-        // Convert escaped quotes \" => "
-        s = s.replace(/\\"/g, '"');
-        // Unescape common escaped newlines \n -> actual newline
-        s = s.replace(/\\n/g, "\n");
-        // Unescape escaped tabs etc if present
-        s = s.replace(/\\t/g, "\t");
-        return s;
+        // Call renderMathInElement on the actual DOM element
+        renderMathInElement(element, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\[', right: '\\]', display: true },
+            { left: '\\(', right: '\\)', display: false }
+          ],
+          throwOnError: false,
+          errorColor: '#cc0000',
+          trust: true,
+          strict: false,
+          macros: {
+            "\\RR": "\\mathbb{R}",
+            "\\NN": "\\mathbb{N}",
+            "\\ZZ": "\\mathbb{Z}",
+            "\\QQ": "\\mathbb{Q}"
+          }
+        });
+      } catch (e) {
+        console.error("KaTeX rendering error:", e);
       }
-    }
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-
-      for (let i = 0; i < lines.length - 1; i++) {
-        const line = lines[i].trim();
-        if (!line.startsWith("data: ")) continue;
-        const rawData = line.slice(6);
-
-        if (rawData === "[DONE]") {
-          // Finalize full response using the raw canonical accumulator
-          fullResponse = fullResponseRaw;
-          console.log("Final stored input:", fullResponse);
-
-          // Try final parse of englishBlock to extract display content (defensive)
-          try {
-            parsedList = JSON.parse(englishBlock);
-            displayContent = parsedList
-              .filter(item => Array.isArray(item) && item.length >= 2)
-              .map(item => item[1])
-              .join("\n\n");
-          } catch (e) {
-            // If parsing fails, fallback: try to extract second elements with regex (best-effort)
-            console.warn("Final JSON parse failed, falling back:", e);
-            // naive fallback: find matches of ["type","content",...]
-            const fallbackMatches = [...englishBlock.matchAll(/\[ *"(?:[^"\\]|\\.)*" *, *"(?:[^"\\]|\\.)*"/g)];
-            displayContent = fallbackMatches
-              .map(m => {
-                const inner = m[0];
-                const parts = inner.split(/",\s*"/).map(p => p.replace(/^\[ *"/, "").replace(/"$/, ""));
-                return parts[1] || "";
-              })
-              .join("\n\n");
-          }
-
-          noteToggle.innerHTML = marked.parse(displayContent);
-          // Optionally you might want to store fullResponse somewhere global:
-          window.LAST_FULL_RESPONSE = fullResponse;
-          return;
-        }
-
-        // Normalize incoming chunk in a single canonical string form
-        const clean = normalizeChunk(rawData);
-
-        // Append to canonical full response => ALWAYS
-        fullResponseRaw += clean;
-
-        // If separator exists inside this chunk, split and route pieces
-        if (!tamilStarted && clean.includes("&&&&")) {
-          tamilStarted = true;
-          const [before, after] = clean.split("&&&&", 2);
-          englishBlock += before;
-          tamilBlock += after || "";
-        } else {
-          if (!tamilStarted) {
-            englishBlock += clean;
-          } else {
-            tamilBlock += clean;
-          }
-        }
-
-        // Try parsing the englishBlock progressively to update the live UI.
-        // This will succeed only once englishBlock contains a valid JSON array.
-        try {
-          const arr = JSON.parse(englishBlock);
-          if (Array.isArray(arr)) {
-            parsedList = arr;
-            // Build displayContent from second element of each inner list
-            displayContent = arr
-              .filter(item => Array.isArray(item) && item.length >= 2)
-              .map(item => item[1])
-              .join("\n\n");
-
-            // Progressive update
-            noteToggle.innerHTML = marked.parse(displayContent);
-          }
-        } catch {
-          // Not yet a complete JSON — ignore and wait for more chunks
-        }
-      }
-
-      // leftover partial line remains in buffer
-      buffer = lines[lines.length - 1];
-    }
-
-  } catch (e) {
-    // show what we have so far
-    noteToggle.innerHTML = marked.parse(
-      (typeof displayContent === "string" ? displayContent : "") + "\n\n[Error / Stopped]"
-    );
-
-    if (e.name === "AbortError") {
-      console.warn("Request aborted by user.");
     } else {
-      out.innerHTML = `Error: ${e.message}`;
-      console.error("Stream error:", e);
+      console.warn("renderMathInElement is not available. Make sure KaTeX auto-render is loaded.");
     }
-  } finally {
-    controller = null;
-  }}
+  }
+
+  // Helper: Build display content from parsed array
+  function buildDisplayContent(arr) {
+    const items = arr
+      .filter(item => Array.isArray(item) && item.length >= 2)
+      .map(formatContentItem)
+      .filter(html => html.trim() !== "") // Remove empty items
+      .join("\n");
+    
+    return `<div class="math-content-wrapper">${items}</div>`;
+  }
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+
+    for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      if (!line.startsWith("data: ")) continue;
+      const rawData = line.slice(6);
+
+      if (rawData === "[DONE]") {
+        fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
+        console.log("Final stored input:", fullResponse);
+
+        try {
+          // Parse the JSON
+          parsedList = JSON.parse(englishBlock);
+          
+          if (Array.isArray(parsedList) && parsedList.length > 0) {
+            // Build HTML content
+            const htmlContent = buildDisplayContent(parsedList);
+            displayContent = htmlContent;
+            
+            // STEP 1: Set HTML first
+            noteToggle.innerHTML = htmlContent;
+            
+            // STEP 2: Then render LaTeX on the DOM element
+            renderLatexInElement(noteToggle);
+            
+            console.log("Rendering complete with LaTeX!");
+          } else {
+            throw new Error("Parsed result is not a valid array");
+          }
+        } catch (e) {
+          console.error("JSON parse error:", e);
+          console.log("English block:", englishBlock);
+          
+          noteToggle.innerHTML = `<div class="error-message">
+            <p><strong>Content processing error</strong></p>
+            <p>Error: ${e.message}</p>
+          </div>`;
+        }
+
+        window.LAST_FULL_RESPONSE = fullResponse;
+        window.LAST_PARSED_DATA = {
+          english: parsedList,
+          tamil: tamilBlock.trim()
+        };
+        
+        return;
+      }
+
+      const clean = normalizeChunk(rawData);
+      fullResponseRaw += clean;
+
+      if (!tamilStarted && clean.includes("&&&&")) {
+        tamilStarted = true;
+        const [before, after] = clean.split("&&&&", 2);
+        englishBlock += before;
+        tamilBlock += after || "";
+      } else {
+        if (!tamilStarted) {
+          englishBlock += clean;
+        } else {
+          tamilBlock += clean;
+        }
+      }
+
+      // Progressive rendering
+      try {
+        const arr = JSON.parse(englishBlock);
+        
+        if (Array.isArray(arr) && arr.length > 0) {
+          parsedList = arr;
+          const htmlContent = buildDisplayContent(arr);
+          displayContent = htmlContent;
+          
+          // STEP 1: Set HTML first
+          noteToggle.innerHTML = htmlContent;
+          
+          // STEP 2: Then render LaTeX
+          renderLatexInElement(noteToggle);
+        }
+      } catch (parseError) {
+        // Not ready yet, silent fail during progressive parsing
+      }
+    }
+
+    buffer = lines[lines.length - 1];
+  }
+
+} catch (e) {
+  const errorContent = displayContent || "<p>An error occurred</p>";
+  noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
+
+  if (e.name === "AbortError") {
+    console.warn("Request aborted by user.");
+  } else {
+    console.error("Stream error:", e);
+  }
+} finally {
+  controller = null;
+}}
   else{
      try {
     const formData = new FormData();
