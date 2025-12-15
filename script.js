@@ -480,70 +480,104 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
     }
 
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullResponse = ''; // Background storage for complete response
-    let displayContent = ''; // Content to display (English only)
-    let isEnglish = true; // Flag to track if still in English
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullResponse = ''; // Background storage for complete response
+  let displayContent = ''; // Content to display (English only)
+  let separatorFound = false; // Flag to track if \n\n separator found
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
+  // Helper function to process display content
+  function processDisplayContent(text) {
+    // Remove ### and make that line bold with blue color
+    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1em 0 0.5em 0;">$1</h2>');
+  }
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
 
-      for (let i = 0; i < lines.length - 1; i++) {
-        const line = lines[i].trim();
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') {
-            // Final render
-            noteToggle.innerHTML = marked.parse(displayContent);
-            input = fullResponse + "&&&" + selectedLanguage.trim();
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
 
-            // Available for later use
-            return;
-          }
+    for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6);
+        if (data === '[DONE]') {
+          // Process and render final display content
+          const processedContent = processDisplayContent(displayContent);
+          noteToggle.innerHTML = marked.parse(processedContent);
+          
+          // Store full response with language appended
+          input = fullResponse + "&&&" + selectedLanguage.trim();
+          return;
+        }
 
-          try {
-            const content = JSON.parse(data);
-            fullResponse += content; // Always store
-            if (isEnglish) {
-              // Detect non-English (non-ASCII chars)
-              if (/[^\x00-\x7F]/.test(content)) {
-                isEnglish = false;
-              } else {
-                displayContent += content;
-                noteToggle.innerHTML = marked.parse(displayContent); // Update display with markdown
-              }
+        try {
+          const content = JSON.parse(data);
+          fullResponse += content; // Always store in full response
+          
+          if (!separatorFound) {
+            // Check if content contains \n\n separator
+            if (content.includes('\n\n')) {
+              separatorFound = true;
+              // Split at first \n\n and take only the part before it
+              const parts = content.split('\n\n');
+              displayContent += parts[0]; // Add only English part
+              
+              // Process and update display
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
+            } else {
+              // No separator yet, keep adding to display
+              displayContent += content;
+              
+              // Process and update display progressively
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
             }
-          } catch (e) {
-            // If not JSON, add raw
-            fullResponse += data;
-            if (isEnglish) {
-              if (/[^\x00-\x7F]/.test(data)) {
-                isEnglish = false;
-              } else {
-                displayContent += data;
-                noteToggle.innerHTML = marked.parse(displayContent);
-              }
+          }
+          // After separator found, only update fullResponse (already done above)
+        } catch (e) {
+          // If not JSON, add raw data
+          fullResponse += data;
+          
+          if (!separatorFound) {
+            // Check if data contains \n\n separator
+            if (data.includes('\n\n')) {
+              separatorFound = true;
+              // Split at first \n\n and take only the part before it
+              const parts = data.split('\n\n');
+              displayContent += parts[0]; // Add only English part
+              
+              // Process and update display
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
+            } else {
+              // No separator yet, keep adding to display
+              displayContent += data;
+              
+              // Process and update display progressively
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
             }
           }
         }
       }
-      buffer = lines[lines.length - 1];
     }
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      noteToggle.innerHTML = marked.parse(displayContent) + '\n[Stopped by user]';
-    } else {
-      out.innerHTML = `Error: ${e.message}`;
-      console.error('Stream error:', e);
-    }
-  } finally {
-    controller = null;
+    buffer = lines[lines.length - 1];
   }
+} catch (e) {
+  if (e.name === 'AbortError') {
+    const processedContent = processDisplayContent(displayContent);
+    noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+  } else {
+    out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
+    console.error('Stream error:', e);
+  }
+} finally {
+  controller = null;
+}
 }
 
   }
@@ -822,70 +856,105 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullResponse = ''; // Background storage for complete response
-    let displayContent = ''; // Content to display (English only)
-    let isEnglish = true; // Flag to track if still in English
+     const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullResponse = ''; // Background storage for complete response
+  let displayContent = ''; // Content to display (English only)
+  let separatorFound = false; // Flag to track if \n\n separator found
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
+  // Helper function to process display content
+  function processDisplayContent(text) {
+    // Remove ### and make that line bold with blue color
+    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1em 0 0.5em 0;">$1</h2>');
+  }
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
 
-      for (let i = 0; i < lines.length - 1; i++) {
-        const line = lines[i].trim();
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') {
-            // Final render
-            noteToggle.innerHTML = marked.parse(displayContent);
-            input = fullResponse + "&&&" + selectedLanguage.trim();
-            // Available for later use
-            return;
-          }
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
 
-          try {
-            const content = JSON.parse(data);
-            fullResponse += content; // Always store
-            if (isEnglish) {
-              // Detect non-English (non-ASCII chars)
-              if (/[^\x00-\x7F]/.test(content)) {
-                isEnglish = false;
-              } else {
-                displayContent += content;
-                noteToggle.innerHTML = marked.parse(displayContent); // Update display with markdown
-              }
+    for (let i = 0; i < lines.length - 1; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6);
+        if (data === '[DONE]') {
+          // Process and render final display content
+          const processedContent = processDisplayContent(displayContent);
+          noteToggle.innerHTML = marked.parse(processedContent);
+          
+          // Store full response with language appended
+          input = fullResponse + "&&&" + selectedLanguage.trim();
+          return;
+        }
+
+        try {
+          const content = JSON.parse(data);
+          fullResponse += content; // Always store in full response
+          
+          if (!separatorFound) {
+            // Check if content contains \n\n separator
+            if (content.includes('\n\n')) {
+              separatorFound = true;
+              // Split at first \n\n and take only the part before it
+              const parts = content.split('\n\n');
+              displayContent += parts[0]; // Add only English part
+              
+              // Process and update display
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
+            } else {
+              // No separator yet, keep adding to display
+              displayContent += content;
+              
+              // Process and update display progressively
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
             }
-          } catch (e) {
-            // If not JSON, add raw
-            fullResponse += data;
-            if (isEnglish) {
-              if (/[^\x00-\x7F]/.test(data)) {
-                isEnglish = false;
-              } else {
-                displayContent += data;
-                noteToggle.innerHTML = marked.parse(displayContent);
-              }
+          }
+          // After separator found, only update fullResponse (already done above)
+        } catch (e) {
+          // If not JSON, add raw data
+          fullResponse += data;
+          
+          if (!separatorFound) {
+            // Check if data contains \n\n separator
+            if (data.includes('\n\n')) {
+              separatorFound = true;
+              // Split at first \n\n and take only the part before it
+              const parts = data.split('\n\n');
+              displayContent += parts[0]; // Add only English part
+              
+              // Process and update display
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
+            } else {
+              // No separator yet, keep adding to display
+              displayContent += data;
+              
+              // Process and update display progressively
+              const processedContent = processDisplayContent(displayContent);
+              noteToggle.innerHTML = marked.parse(processedContent);
             }
           }
         }
       }
-      buffer = lines[lines.length - 1];
     }
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      noteToggle.innerHTML = marked.parse(displayContent) + '\n[Stopped by user]';
-    } else {
-      out.innerHTML = `Error: ${e.message}`;
-      console.error('Stream error:', e);
-    }
-  } finally {
-    controller = null;
+    buffer = lines[lines.length - 1];
   }
+} catch (e) {
+  if (e.name === 'AbortError') {
+    const processedContent = processDisplayContent(displayContent);
+    noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+  } else {
+    out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
+    console.error('Stream error:', e);
+  }
+} finally {
+  controller = null;
+}
 }
 
 }
