@@ -484,12 +484,38 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
   let buffer = '';
   let fullResponse = ''; // Background storage for complete response
   let displayContent = ''; // Content to display (English only)
-  let separatorFound = false; // Flag to track if \n\n separator found
 
-  // Helper function to process display content
+  // Helper function to extract English content from full response
+  function extractEnglishContent(text) {
+    // Split by #### to get individual sections
+    const sections = text.split('####');
+    
+    let englishParts = [];
+    
+    for (let section of sections) {
+      section = section.trim();
+      if (!section) continue;
+      
+      // Check if section contains &&&
+      if (true) {
+        // Split at first occurrence of \n\n to separate English from Tamil
+        const parts = section.split('\n\n');
+        if (parts.length > 0) {
+          englishParts.push(parts[0].trim());
+        }
+      } else {
+        // No separator yet, include the whole section
+        englishParts.push(section.trim());
+      }
+    }
+    
+    return englishParts.join('\n\n\n'); // Join with double line gaps
+  }
+
+  // Helper function to process display content (remove ### and make blue/bold)
   function processDisplayContent(text) {
     // Remove ### and make that line bold with blue color
-    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1em 0 0.5em 0;">$1</h2>');
+    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1.5em 0 0.5em 0; padding-bottom: 0.3em; border-bottom: 2px solid #4a90e2;">$1</h2>');
   }
 
   while (true) {
@@ -504,12 +530,18 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
         if (data === '[DONE]') {
+          // Extract English content from full response
+          displayContent = extractEnglishContent(fullResponse);
+          
           // Process and render final display content
           const processedContent = processDisplayContent(displayContent);
           noteToggle.innerHTML = marked.parse(processedContent);
           
-          // Store full response with language appended
-          input = fullResponse + "&&&" + selectedLanguage.trim();
+          // Store full response with language appended (remove trailing #### if present)
+          const cleanedResponse = fullResponse.trim().replace(/####\s*$/, '').trim();
+          input = cleanedResponse + (cleanedResponse.endsWith('&&&' + selectedLanguage.trim()) ? '' : '\n&&&' + selectedLanguage.trim());
+          
+
           return;
         }
 
@@ -517,51 +549,19 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
           const content = JSON.parse(data);
           fullResponse += content; // Always store in full response
           
-          if (!separatorFound) {
-            // Check if content contains \n\n separator
-            if (content.includes('\n\n')) {
-              separatorFound = true;
-              // Split at first \n\n and take only the part before it
-              const parts = content.split('\n\n');
-              displayContent += parts[0]; // Add only English part
-              
-              // Process and update display
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            } else {
-              // No separator yet, keep adding to display
-              displayContent += content;
-              
-              // Process and update display progressively
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            }
-          }
-          // After separator found, only update fullResponse (already done above)
+          // Progressive update: extract and display English content
+          displayContent = extractEnglishContent(fullResponse);
+          const processedContent = processDisplayContent(displayContent);
+          noteToggle.innerHTML = marked.parse(processedContent);
+          
         } catch (e) {
           // If not JSON, add raw data
           fullResponse += data;
           
-          if (!separatorFound) {
-            // Check if data contains \n\n separator
-            if (data.includes('\n\n')) {
-              separatorFound = true;
-              // Split at first \n\n and take only the part before it
-              const parts = data.split('\n\n');
-              displayContent += parts[0]; // Add only English part
-              
-              // Process and update display
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            } else {
-              // No separator yet, keep adding to display
-              displayContent += data;
-              
-              // Process and update display progressively
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            }
-          }
+          // Progressive update: extract and display English content
+          displayContent = extractEnglishContent(fullResponse);
+          const processedContent = processDisplayContent(displayContent);
+          noteToggle.innerHTML = marked.parse(processedContent);
         }
       }
     }
@@ -569,6 +569,7 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
   }
 } catch (e) {
   if (e.name === 'AbortError') {
+    displayContent = extractEnglishContent(fullResponse);
     const processedContent = processDisplayContent(displayContent);
     noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
   } else {
@@ -861,12 +862,38 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
   let buffer = '';
   let fullResponse = ''; // Background storage for complete response
   let displayContent = ''; // Content to display (English only)
-  let separatorFound = false; // Flag to track if \n\n separator found
 
-  // Helper function to process display content
+  // Helper function to extract English content from full response
+  function extractEnglishContent(text) {
+    // Split by #### to get individual sections
+    const sections = text.split('####');
+    
+    let englishParts = [];
+    
+    for (let section of sections) {
+      section = section.trim();
+      if (!section) continue;
+      
+      // Check if section contains &&&
+      if (true) {
+        // Split at first occurrence of \n\n to separate English from Tamil
+        const parts = section.split('\n\n');
+        if (parts.length > 0) {
+          englishParts.push(parts[0].trim());
+        }
+      } else {
+        // No separator yet, include the whole section
+        englishParts.push(section.trim());
+      }
+    }
+    
+    return englishParts.join('\n\n\n'); // Join with double line gaps
+  }
+
+  // Helper function to process display content (remove ### and make blue/bold)
   function processDisplayContent(text) {
     // Remove ### and make that line bold with blue color
-    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1em 0 0.5em 0;">$1</h2>');
+    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1.5em 0 0.5em 0; padding-bottom: 0.3em; border-bottom: 2px solid #4a90e2;">$1</h2>');
   }
 
   while (true) {
@@ -881,12 +908,18 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
         if (data === '[DONE]') {
+          // Extract English content from full response
+          displayContent = extractEnglishContent(fullResponse);
+          
           // Process and render final display content
           const processedContent = processDisplayContent(displayContent);
           noteToggle.innerHTML = marked.parse(processedContent);
           
-          // Store full response with language appended
-          input = fullResponse + "&&&" + selectedLanguage.trim();
+          // Store full response with language appended (remove trailing #### if present)
+          const cleanedResponse = fullResponse.trim().replace(/####\s*$/, '').trim();
+          input = cleanedResponse + (cleanedResponse.endsWith('&&&' + selectedLanguage.trim()) ? '' : '\n&&&' + selectedLanguage.trim());
+          
+
           return;
         }
 
@@ -894,51 +927,19 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
           const content = JSON.parse(data);
           fullResponse += content; // Always store in full response
           
-          if (!separatorFound) {
-            // Check if content contains \n\n separator
-            if (content.includes('\n\n')) {
-              separatorFound = true;
-              // Split at first \n\n and take only the part before it
-              const parts = content.split('\n\n');
-              displayContent += parts[0]; // Add only English part
-              
-              // Process and update display
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            } else {
-              // No separator yet, keep adding to display
-              displayContent += content;
-              
-              // Process and update display progressively
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            }
-          }
-          // After separator found, only update fullResponse (already done above)
+          // Progressive update: extract and display English content
+          displayContent = extractEnglishContent(fullResponse);
+          const processedContent = processDisplayContent(displayContent);
+          noteToggle.innerHTML = marked.parse(processedContent);
+          
         } catch (e) {
           // If not JSON, add raw data
           fullResponse += data;
           
-          if (!separatorFound) {
-            // Check if data contains \n\n separator
-            if (data.includes('\n\n')) {
-              separatorFound = true;
-              // Split at first \n\n and take only the part before it
-              const parts = data.split('\n\n');
-              displayContent += parts[0]; // Add only English part
-              
-              // Process and update display
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            } else {
-              // No separator yet, keep adding to display
-              displayContent += data;
-              
-              // Process and update display progressively
-              const processedContent = processDisplayContent(displayContent);
-              noteToggle.innerHTML = marked.parse(processedContent);
-            }
-          }
+          // Progressive update: extract and display English content
+          displayContent = extractEnglishContent(fullResponse);
+          const processedContent = processDisplayContent(displayContent);
+          noteToggle.innerHTML = marked.parse(processedContent);
         }
       }
     }
@@ -946,6 +947,7 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
   }
 } catch (e) {
   if (e.name === 'AbortError') {
+    displayContent = extractEnglishContent(fullResponse);
     const processedContent = processDisplayContent(displayContent);
     noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
   } else {
@@ -1062,6 +1064,8 @@ document.querySelectorAll('.sidebar-btn').forEach(btn => {
       window.open("feedback.html","_self")
     } else if (btn.textContent === 'ToggleMode') {
       document.body.classList.toggle('dark');
+      const logo = document.getElementByclass("logo");
+      logo.src="logoimg.jpg";
     }
     closeSidebar();
   });
