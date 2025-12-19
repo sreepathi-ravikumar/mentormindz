@@ -2,7 +2,7 @@ const video = document.getElementById("myVideo");
 const source = document.getElementById("videoSource");
 const videos = [
   { src: "video.mp4", audio: true, loop: false },
-  { src: "https://videos.pexels.com/video-files/3173312/3173312-uhd_2560_1440_30fps.mp4", audio: false, loop: true }
+  { src: "videopage.mp4", audio: false, loop: true }
 ];
 let index = 0;
 function playVideo(i) {
