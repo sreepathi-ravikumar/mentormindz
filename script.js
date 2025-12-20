@@ -150,7 +150,7 @@ async function loadVideo() {
   document.querySelector('.actions .fa-file-lines').classList.remove('active');
   const durationText = input;
   try {
-    const response = await fetch('https://sreepathi-ravikumar-backendprocesssuper.hf.space/generate', {
+    const response = await fetch('https://gateway2.rksreepathi1.workers.dev/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ async function loadVideomath() {
 
   try {
     const response = await fetch(
-      `https://sreepathi-ravikumar-backendprocessmath.hf.space/generate`,
+      `https://gateway2.rksreepathi1.workers.dev/generatemath`,
       {
         method: 'POST',
         headers: {
@@ -219,8 +219,8 @@ async function loadVideomath() {
     document.querySelector('.actions .fa-file-lines').classList.remove('active');
   }
 }
-const BACKEND_URL_TEXT = "https://sreepathi-ravikumar-sample1.hf.space/ask";
-const BACKEND_URL_IMAGE = "https://sreepathi-ravikumar-sample1.hf.space/askimage";
+const BACKEND_URL_TEXT = "https://gateway1.rksreepathi1.workers.dev/ask";
+const BACKEND_URL_IMAGE = "https://gateway1.rksreepathi1.workers.dev/askimage";
 async function streamAsk(question, selectedLanguage, selectedMode) {
   panelEl.classList.add("opened", "default-size");
   overlayEl.classList.add("show");
@@ -616,12 +616,15 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     if (selectedMode=="Solve Smart"){
 
  try {
-  const response = await fetch(BACKEND_URL_TEXT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, selectedLanguage, selectedMode }),
-    signal: controller.signal
-  });
+ const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('selectedLanguage', selectedLanguage);
+    formData.append('selectedMode', selectedMode);
+    const response = await fetch(BACKEND_URL_IMAGE, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal
+    });                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
