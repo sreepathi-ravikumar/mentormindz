@@ -167,6 +167,12 @@ async function loadVideo() {
     window.sharedVideoUrl = url;
   } catch (error) {
     console.error('Error loading video:', error);
+    const url = "error.mp4"
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
   }
 }
 async function loadVideomath() {
@@ -205,6 +211,12 @@ async function loadVideomath() {
   } catch (error) {
     console.error('Error loading video:', error);
     //out.textContent = 'Error loading video. Please try again.';
+    const url = "error.mp4"
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
   }
 }
 const BACKEND_URL_TEXT = "https://sreepathi-ravikumar-sample1.hf.space/ask";
