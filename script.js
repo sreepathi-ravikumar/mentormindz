@@ -241,7 +241,7 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
   try {
   const response = await fetch(BACKEND_URL_TEXT, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
     body: JSON.stringify({ question, selectedLanguage, selectedMode }),
     signal: controller.signal
   });
@@ -488,7 +488,7 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
      try {
     const response = await fetch(BACKEND_URL_TEXT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
       body: JSON.stringify({ question: question, selectedLanguage: selectedLanguage, selectedMode: selectedMode }),
       signal: controller.signal
     });
@@ -640,6 +640,7 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     formData.append('selectedMode', selectedMode);
     const response = await fetch(BACKEND_URL_IMAGE, {
       method: "POST",
+      headers: {'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
       body: formData,
       signal: controller.signal
     });                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
@@ -890,6 +891,7 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     formData.append('selectedMode', selectedMode);
     const response = await fetch(BACKEND_URL_IMAGE, {
       method: "POST",
+      headers: {'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
       body: formData,
       signal: controller.signal
     });
