@@ -1058,18 +1058,30 @@ sidebar.addEventListener('click', function(e){
 // Sidebar actions
 document.querySelectorAll('.sidebar-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (btn.textContent === 'New') {
-      window.open("home.html","_self")
-    } else if (btn.textContent === 'Feedback') {
-      window.open("feedback.html","_self")
-    } else if (btn.textContent === 'ToggleMode') {
-      document.body.classList.toggle('dark');
-      const logo = document.getElementByclass("logo");
-      logo.src="logoimg.jpg";
+    const action = btn.dataset.action;
+    const logo = document.querySelector(".logo");
+
+    if (action === "new") {
+      window.open("home.html", "_self");
+    } 
+    else if (action === "feedback") {
+      window.open("feedback.html", "_self");
+    } 
+    else if (action === "toggle-theme") {
+      document.body.classList.toggle("dark");
+
+      // Logo switch based on theme
+      if (document.body.classList.contains("dark")) {
+        logo.src = "logoimgl.jpg";
+      } else {
+        logo.src = "logoimg.jpg";
+      }
     }
+
     closeSidebar();
   });
 });
+
 document.querySelector('.sidebar-settings').addEventListener('click', () => {
   alert('Settings page opened');
   closeSidebar();
