@@ -167,7 +167,7 @@ async function loadVideo() {
     window.sharedVideoUrl = url;
   } catch (error) {
     console.error('Error loading video:', error);
-    const url = "error.mp4"
+    const url = "error.mp4";
     source.src = url;
     video.load();
     panelEl.classList.remove("opened");
@@ -211,7 +211,7 @@ async function loadVideomath() {
   } catch (error) {
     console.error('Error loading video:', error);
     //out.textContent = 'Error loading video. Please try again.';
-    const url = "error.mp4"
+    const url = "error.mp4";
     source.src = url;
     video.load();
     panelEl.classList.remove("opened");
@@ -469,6 +469,12 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
 } catch (e) {
   const errorContent = displayContent || "<p>An error occurred</p>";
   noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
+  const url = "error.mp4";
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
 
   if (e.name === "AbortError") {
     console.warn("Request aborted by user.");
@@ -584,9 +590,21 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
     displayContent = extractEnglishContent(fullResponse);
     const processedContent = processDisplayContent(displayContent);
     noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+    const url = "error.mp4";
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
   } else {
     out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
     console.error('Stream error:', e);
+    const url = "error.mp4";
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
   }
 } finally {
   controller = null;
@@ -849,6 +867,12 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
 } catch (e) {
   const errorContent = displayContent || "<p>An error occurred</p>";
   noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
+  const url = "error.mp4";
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
 
   if (e.name === "AbortError") {
     console.warn("Request aborted by user.");
@@ -965,9 +989,21 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
     displayContent = extractEnglishContent(fullResponse);
     const processedContent = processDisplayContent(displayContent);
     noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+    const url = "error.mp4";
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
   } else {
     out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
     console.error('Stream error:', e);
+    const url = "error.mp4";
+    source.src = url;
+    video.load();
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
   }
 } finally {
   controller = null;
