@@ -127,6 +127,7 @@ sendButton.addEventListener('click', () => {
 });
 //backend code
 let input='';
+let condition = '';
 const panelEl = document.getElementById("bottomPanel");
 const overlayEl = document.getElementById("maskLayer");
 const headerTouch = document.getElementById("dragArea");
@@ -240,7 +241,8 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
   try {
     const response = await fetch(BACKEND_URL_TEXT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+          'X-API-KEY': 'rkmentormindzofficaltokenkey12345' },
       body: JSON.stringify({ question, selectedLanguage, selectedMode }),
       signal: controller.signal
     });
@@ -402,12 +404,13 @@ function formatContentItem(item) {
               const url = "zvideo.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               toggleSheet();
               switchTab('mode');
               condition='unique';
               return;
           } 
-          else if (fullResponse.includes("wrong")) {
+          else if (fullResponseRaw.includes("wrong")) {
               uniqueCodeDetected = true;
               noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">.I couldn’t understand your request clearly.Please rephrase your question and <i>try again.</i>.</p>';
               panelEl.classList.remove("opened");
@@ -415,6 +418,7 @@ function formatContentItem(item) {
               const url = "wrong.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               condition='wrong';
 
               return;
@@ -496,13 +500,26 @@ function formatContentItem(item) {
     }
 
   } catch (e) {
-    const errorContent = displayContent || "<p>An error occurred</p>";
-    noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
-
     if (e.name === "AbortError") {
+      if (displayContent) {
+        noteToggle.innerHTML = `${displayContent}<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>`;
+      } else {
+        noteToggle.innerHTML = `<p style="color: #cc0000;">[Stopped by user]</p>`;
+      }
       console.warn("Request aborted by user.");
+      condition = 'aborted';
     } else {
+      const errorContent = displayContent || "<p>An error occurred</p>";
+      noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error]</strong><br>${e.message}</div>`;
       console.error("Stream error:", e);
+      condition = 'error';
+      const url = "error.mp4";
+      source.src = url;
+      video.load();
+      video.removeAttribute("controls");
+      panelEl.classList.remove("opened");
+      overlayEl.classList.remove("show");
+      document.querySelector('.actions .fa-file-lines').classList.remove('active');
     }
   } finally {
     controller = null;
@@ -511,7 +528,8 @@ function formatContentItem(item) {
   try {
     const response = await fetch(BACKEND_URL_TEXT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" ,
+          'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
       body: JSON.stringify({ question, selectedLanguage, selectedMode }),
       signal: controller.signal
     });
@@ -576,6 +594,7 @@ function formatContentItem(item) {
               const url = "zvideo1.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               toggleSheet();
               switchTab('mode');
               condition='unique';
@@ -590,6 +609,7 @@ function formatContentItem(item) {
               const url = "wrong.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               condition='wrong';
 
               return;
@@ -635,9 +655,18 @@ function formatContentItem(item) {
     if (e.name === 'AbortError') {
       const processedContent = processDisplayContent(displayContent);
       noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+      condition = 'aborted';
     } else {
-      out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
+      noteToggle.innerHTML = `<div class="error-message"><strong>Error:</strong><br>${e.message}</div>`;
       console.error('Stream error:', e);
+      condition = 'error';
+      const url = "error.mp4";
+      source.src = url;
+      video.load();
+      video.removeAttribute("controls");
+      panelEl.classList.remove("opened");
+      overlayEl.classList.remove("show");
+      document.querySelector('.actions .fa-file-lines').classList.remove('active');
     }
   } finally {
     controller = null;
@@ -837,12 +866,13 @@ function formatContentItem(item) {
               const url = "zvideo.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               toggleSheet();
               switchTab('mode');
               condition='unique';
               return;
           } 
-          else if (fullResponse.includes("wrong")) {
+          else if (fullResponseRaw.includes("wrong")) {
               uniqueCodeDetected = true;
               noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">.I couldn’t understand your request clearly.Please rephrase your question and <i>try again.</i>.</p>';
               panelEl.classList.remove("opened");
@@ -850,6 +880,7 @@ function formatContentItem(item) {
               const url = "wrong.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               condition='wrong';
 
               return;
@@ -931,13 +962,26 @@ function formatContentItem(item) {
     }
 
   } catch (e) {
-    const errorContent = displayContent || "<p>An error occurred</p>";
-    noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
-
     if (e.name === "AbortError") {
+      if (displayContent) {
+        noteToggle.innerHTML = `${displayContent}<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>`;
+      } else {
+        noteToggle.innerHTML = `<p style="color: #cc0000;">[Stopped by user]</p>`;
+      }
       console.warn("Request aborted by user.");
+      condition = 'aborted';
     } else {
+      const errorContent = displayContent || "<p>An error occurred</p>";
+      noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error]</strong><br>${e.message}</div>`;
       console.error("Stream error:", e);
+      condition = 'error';
+      const url = "error.mp4";
+      source.src = url;
+      video.load();
+      video.removeAttribute("controls");
+      panelEl.classList.remove("opened");
+      overlayEl.classList.remove("show");
+      document.querySelector('.actions .fa-file-lines').classList.remove('active');
     }
   } finally {
     controller = null;
@@ -1015,6 +1059,7 @@ function formatContentItem(item) {
               const url = "zvideo1.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               toggleSheet();
               switchTab('mode');
               condition='unique';
@@ -1029,6 +1074,7 @@ function formatContentItem(item) {
               const url = "wrong.mp4";
               source.src = url;
               video.load();
+              video.removeAttribute("controls");
               condition='wrong';
 
               return;
@@ -1074,9 +1120,18 @@ function formatContentItem(item) {
     if (e.name === 'AbortError') {
       const processedContent = processDisplayContent(displayContent);
       noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+      condition = 'aborted';
     } else {
-      out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
+      noteToggle.innerHTML = `<div class="error-message"><strong>Error:</strong><br>${e.message}</div>`;
       console.error('Stream error:', e);
+      condition = 'error';
+      const url = "error.mp4";
+      source.src = url;
+      video.load();
+      video.removeAttribute("controls");
+      panelEl.classList.remove("opened");
+      overlayEl.classList.remove("show");
+      document.querySelector('.actions .fa-file-lines').classList.remove('active');
     }
   } finally {
     controller = null;
@@ -1104,7 +1159,7 @@ async function streamResponse(userPrompt = '') {
     await streamAsk(question, selectedLanguage, selectedMode);
   }
  
-  if (condition!="unique" && condition!="wrong")
+  if (!['unique', 'wrong', 'error', 'aborted'].includes(condition))
   {
  
   if (selectedMode=="Solve Smart"){
