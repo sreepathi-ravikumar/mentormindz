@@ -162,7 +162,7 @@ async function loadVideo() {
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     source.src = url;
-    console.log(url)
+    
     video.controls = true;
     video.load();
     window.sharedVideoUrl = url;
@@ -425,7 +425,7 @@ function formatContentItem(item) {
             } 
             else {
             fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
-            console.log("Final stored input:", fullResponse);
+           
           }
 
           try {
@@ -438,13 +438,13 @@ function formatContentItem(item) {
               noteToggle.innerHTML = htmlContent;
               renderLatexInElement(noteToggle);
               
-              console.log("Rendering complete with LaTeX!");
+              
             } else {
               throw new Error("Parsed result is not a valid array");
             }
           } catch (e) {
             console.error("JSON parse error:", e);
-            console.log("English block:", englishBlock);
+            
             
             noteToggle.innerHTML = `<div class="error-message">
               <p><strong>Content processing error</strong></p>
@@ -625,10 +625,10 @@ function formatContentItem(item) {
                 input = cleanedResponse + '\n&&&' + selectedLanguage.trim();
               }
               
-              console.log("Full Response:", input);
+              
             }
             
-            console.log("Display Content:", displayContent);
+            
             return;
           }
 
@@ -887,7 +887,7 @@ function formatContentItem(item) {
             } 
             else {
             fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
-            console.log("Final stored input:", fullResponse);
+           
           }
 
           try {
@@ -900,13 +900,13 @@ function formatContentItem(item) {
               noteToggle.innerHTML = htmlContent;
               renderLatexInElement(noteToggle);
               
-              console.log("Rendering complete with LaTeX!");
+              
             } else {
               throw new Error("Parsed result is not a valid array");
             }
           } catch (e) {
             console.error("JSON parse error:", e);
-            console.log("English block:", englishBlock);
+            
             
             noteToggle.innerHTML = `<div class="error-message">
               <p><strong>Content processing error</strong></p>
@@ -1090,10 +1090,10 @@ function formatContentItem(item) {
                 input = cleanedResponse + '\n&&&' + selectedLanguage.trim();
               }
               
-              console.log("Full Response:", input);
+              
             }
             
-            console.log("Display Content:", displayContent);
+           
             return;
           }
 
