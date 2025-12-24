@@ -236,260 +236,12 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
 
   let controller = new AbortController();
 
-  if (selectedMode=="Solve Smart"){
-
+  if (selectedMode == "Solve Smart") {
   try {
-  const response = await fetch(BACKEND_URL_TEXT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json",'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
-    body: JSON.stringify({ question, selectedLanguage, selectedMode }),
-    signal: controller.signal
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-
-  // Buffers / state
-  let buffer = "";
-  let fullResponseRaw = "";
-  let englishBlock = "";
-  let tamilBlock = "";
-  let tamilStarted = false;
-
-  let parsedList = [];
-  let displayContent = "";
-
-  // Helper: normalize incoming chunk
-  function normalizeChunk(data) {
-    try {
-      const parsed = JSON.parse(data);
-      if (typeof parsed === "string") return parsed;
-      return JSON.stringify(parsed);
-    } catch {
-      let s = data.replace(/^"+|"+$/g, "");
-      s = s.replace(/\\"/g, '"');
-      s = s.replace(/\\n/g, "\n");
-      s = s.replace(/\\t/g, "\t");
-      return s;
-    }
-  }
-
-  // Helper: Remove # and % symbols
-  function processLatexText(text) {
-    if (!text) return "";
-    return text
-      .replace(/#%/g, '')  // Remove #% combination first
-      .replace(/#/g, '')   // Remove all # symbols
-      .replace(/%/g, '')   // Remove all % symbols
-      .trim();
-  }
-
-  // Helper: Format content items
-  function formatContentItem(item) {
-    if (!Array.isArray(item) || item.length < 2) return "";
-    
-    const [type, content] = item;
-    const processed = processLatexText(content);
-    
-    // Skip empty content
-    if (!processed) return "";
-    
-    switch (type) {
-      case "title":
-        return `<div class="content-title">
-          <h1>${processed}</h1>
-        </div>`;
-      
-      case "text":
-        return `<div class="content-text">
-          <p>${processed}</p>
-        </div>`;
-      
-      case "equation":
-        return `<div class="content-equation">
-          $$${processed}$$
-        </div>`;
-      
-      case "code":
-        return `<div class="content-code">
-          <pre><code>${content}</code></pre>
-        </div>`;
-      
-      case "list":
-        return `<div class="content-list">
-          ${processed}
-        </div>`;
-      
-      default:
-        return `<div class="content-default">
-          <p>${processed}</p>
-        </div>`;
-    }
-  }
-
-  // Helper: Render LaTeX in DOM element (FIXED VERSION)
-  function renderLatexInElement(element) {
-    if (typeof renderMathInElement !== 'undefined') {
-      try {
-        // Call renderMathInElement on the actual DOM element
-        renderMathInElement(element, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\[', right: '\\]', display: true },
-            { left: '\\(', right: '\\)', display: false }
-          ],
-          throwOnError: false,
-          errorColor: '#cc0000',
-          trust: true,
-          strict: false,
-          macros: {
-            "\\RR": "\\mathbb{R}",
-            "\\NN": "\\mathbb{N}",
-            "\\ZZ": "\\mathbb{Z}",
-            "\\QQ": "\\mathbb{Q}"
-          }
-        });
-      } catch (e) {
-        console.error("KaTeX rendering error:", e);
-      }
-    } else {
-      console.warn("renderMathInElement is not available. Make sure KaTeX auto-render is loaded.");
-    }
-  }
-
-  // Helper: Build display content from parsed array
-  function buildDisplayContent(arr) {
-    const items = arr
-      .filter(item => Array.isArray(item) && item.length >= 2)
-      .map(formatContentItem)
-      .filter(html => html.trim() !== "") // Remove empty items
-      .join("\n");
-    
-    return `<div class="math-content-wrapper">${items}</div>`;
-  }
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-
-    for (let i = 0; i < lines.length - 1; i++) {
-      const line = lines[i].trim();
-      if (!line.startsWith("data: ")) continue;
-      const rawData = line.slice(6);
-
-      if (rawData === "[DONE]") {
-        fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
-        console.log("Final stored input:", fullResponse);
-
-        try {
-          // Parse the JSON
-          parsedList = JSON.parse(englishBlock);
-          
-          if (Array.isArray(parsedList) && parsedList.length > 0) {
-            // Build HTML content
-            const htmlContent = buildDisplayContent(parsedList);
-            displayContent = htmlContent;
-            
-            // STEP 1: Set HTML first
-            noteToggle.innerHTML = htmlContent;
-            
-            // STEP 2: Then render LaTeX on the DOM element
-            renderLatexInElement(noteToggle);
-            
-            console.log("Rendering complete with LaTeX!");
-          } else {
-            throw new Error("Parsed result is not a valid array");
-          }
-        } catch (e) {
-          console.error("JSON parse error:", e);
-          console.log("English block:", englishBlock);
-          
-          noteToggle.innerHTML = `<div class="error-message">
-            <p><strong>Content processing error</strong></p>
-            <p>Error: ${e.message}</p>
-          </div>`;
-        }
-
-        window.LAST_FULL_RESPONSE = fullResponse;
-        window.LAST_PARSED_DATA = {
-          english: parsedList,
-          tamil: tamilBlock.trim()
-        };
-        
-        return;
-      }
-
-      const clean = normalizeChunk(rawData);
-      fullResponseRaw += clean;
-
-      if (!tamilStarted && clean.includes("&&&&")) {
-        tamilStarted = true;
-        const [before, after] = clean.split("&&&&", 2);
-        englishBlock += before;
-        tamilBlock += after || "";
-      } else {
-        if (!tamilStarted) {
-          englishBlock += clean;
-        } else {
-          tamilBlock += clean;
-        }
-      }
-
-      // Progressive rendering
-      try {
-        const arr = JSON.parse(englishBlock);
-        
-        if (Array.isArray(arr) && arr.length > 0) {
-          parsedList = arr;
-          const htmlContent = buildDisplayContent(arr);
-          displayContent = htmlContent;
-          
-          // STEP 1: Set HTML first
-          noteToggle.innerHTML = htmlContent;
-          
-          // STEP 2: Then render LaTeX
-          renderLatexInElement(noteToggle);
-        }
-      } catch (parseError) {
-        // Not ready yet, silent fail during progressive parsing
-      }
-    }
-
-    buffer = lines[lines.length - 1];
-  }
-
-} catch (e) {
-  const errorContent = displayContent || "<p>An error occurred</p>";
-  noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
-  const url = "error.mp4";
-    source.src = url;
-    video.load();
-    panelEl.classList.remove("opened");
-    overlayEl.classList.remove("show");
-    document.querySelector('.actions .fa-file-lines').classList.remove('active');
-
-  if (e.name === "AbortError") {
-    console.warn("Request aborted by user.");
-  } else {
-    console.error("Stream error:", e);
-  }
-} finally {
-  controller = null;
-}}
-  else{
-     try {
     const response = await fetch(BACKEND_URL_TEXT, {
       method: "POST",
-      headers: { "Content-Type": "application/json",'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
-      body: JSON.stringify({ question: question, selectedLanguage: selectedLanguage, selectedMode: selectedMode }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, selectedLanguage, selectedMode }),
       signal: controller.signal
     });
 
@@ -498,119 +250,399 @@ async function streamAsk(question, selectedLanguage, selectedMode) {
     }
 
     const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullResponse = ''; // Background storage for complete response
-  let displayContent = ''; // Content to display (English only)
+    const decoder = new TextDecoder();
 
-  // Helper function to extract English content from full response
-  function extractEnglishContent(text) {
-    // Split by #### to get individual sections
-    const sections = text.split('####');
-    
-    let englishParts = [];
-    
-    for (let section of sections) {
-      section = section.trim();
-      if (!section) continue;
-      
-      // Check if section contains &&&
-      if (true) {
-        // Split at first occurrence of \n\n to separate English from Tamil
-        const parts = section.split('\n\n');
-        if (parts.length > 0) {
-          englishParts.push(parts[0].trim());
-        }
-      } else {
-        // No separator yet, include the whole section
-        englishParts.push(section.trim());
+    // Buffers / state
+    let buffer = "";
+    let fullResponseRaw = "";
+    let englishBlock = "";
+    let tamilBlock = "";
+    let tamilStarted = false;
+
+    let parsedList = [];
+    let displayContent = "";
+    let uniqueCodeDetected = false;
+
+    // Helper: normalize incoming chunk
+    function normalizeChunk(data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (typeof parsed === "string") return parsed;
+        return JSON.stringify(parsed);
+      } catch {
+        let s = data.replace(/^"+|"+$/g, "");
+        s = s.replace(/\\"/g, '"');
+        s = s.replace(/\\n/g, "\n");
+        s = s.replace(/\\t/g, "\t");
+        return s;
       }
     }
-    
-    return englishParts.join('\n\n\n'); // Join with double line gaps
+
+    // Helper: Remove # and % symbols
+    function processLatexText(text) {
+      if (!text) return "";
+      return text
+        .replace(/#%/g, '')
+        .replace(/#/g, '')
+        .replace(/%/g, '')
+        .trim();
+    }
+  function parseMixedContent(text) {
+  if (!text) return "";
+
+  const parts = text.split("#");
+  let result = "";
+
+  for (let part of parts) {
+    part = part.trim();
+
+    // 🔥 Math segment (starts with %)
+    if (part.startsWith("%")) {
+      const math = part.slice(1).trim(); // remove starting %
+      result += ` \\(${math}\\) `;
+    }
+    // Normal text
+    else {
+      result += processLatexText(part) + " ";
+    }
   }
 
-  // Helper function to process display content (remove ### and make blue/bold)
-  function processDisplayContent(text) {
-    // Remove ### and make that line bold with blue color
-    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1.5em 0 0.5em 0; padding-bottom: 0.3em; border-bottom: 2px solid #4a90e2;">$1</h2>');
+  return result.trim();
+}
+function formatContentItem(item) {
+  if (!Array.isArray(item) || item.length < 2) return "";
+
+  const [type, content] = item;
+
+  const processed =
+    type === "title" || type === "text"
+      ? parseMixedContent(content)
+      : processLatexText(content);
+
+  switch (type) {
+    case "title":
+      return `<div class="content-title"><h1>${processed}</h1></div>`;
+
+    case "text":
+      return `<div class="content-text"><p>${processed}</p></div>`;
+
+    case "equation":
+      return `<div class="content-equation">$$${processed}$$</div>`;
+
+    case "code":
+      return `<div class="content-code"><pre><code>${content}</code></pre></div>`;
+
+    case "list":
+      return `<div class="content-list">${processed}</div>`;
+
+    default:
+      return `<p>${processed}</p>`;
   }
+}
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
+    // Helper: Render LaTeX in DOM element
+    function renderLatexInElement(element) {
+      if (typeof renderMathInElement !== 'undefined') {
+        try {
+          renderMathInElement(element, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\[', right: '\\]', display: true },
+              { left: '\\(', right: '\\)', display: false }
+            ],
+            throwOnError: false,
+            errorColor: '#cc0000',
+            trust: true,
+            strict: false,
+            macros: {
+              "\\RR": "\\mathbb{R}",
+              "\\NN": "\\mathbb{N}",
+              "\\ZZ": "\\mathbb{Z}",
+              "\\QQ": "\\mathbb{Q}"
+            }
+          });
+        } catch (e) {
+          console.error("KaTeX rendering error:", e);
+        }
+      }
+    }
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
+    // Helper: Build display content from parsed array
+    function buildDisplayContent(arr) {
+      const items = arr
+        .filter(item => Array.isArray(item) && item.length >= 2)
+        .map(formatContentItem)
+        .filter(html => html.trim() !== "")
+        .join("\n");
+      
+      return `<div class="math-content-wrapper">${items}</div>`;
+    }
 
-    for (let i = 0; i < lines.length - 1; i++) {
-      const line = lines[i].trim();
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (data === '[DONE]') {
-          // Extract English content from full response
-          displayContent = extractEnglishContent(fullResponse);
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim();
+        if (!line.startsWith("data: ")) continue;
+        const rawData = line.slice(6);
+
+        if (rawData === "[DONE]") {
+          // Check for unique code before storing
+          if (fullResponseRaw.includes("unique")) {
+            uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">Solve Smartl supports numerical problems only. Switch to <i>Simple Learn</i> or <i>Learn Deeper</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              document.querySelector('.actions .fa-file-lines').classList.remove('active');
+              const url = "zvideo.mp4";
+              source.src = url;
+              video.load();
+              toggleSheet();
+              switchTab('mode');
+              condition='unique';
+              return;
+          } 
+          else if (fullResponse.includes("wrong")) {
+              uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">.I couldn’t understand your request clearly.Please rephrase your question and <i>try again.</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              const url = "wrong.mp4";
+              source.src = url;
+              video.load();
+              condition='wrong';
+
+              return;
+            } 
+            else {
+            fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
+            console.log("Final stored input:", fullResponse);
+          }
+
+          try {
+            parsedList = JSON.parse(englishBlock);
+            
+            if (Array.isArray(parsedList) && parsedList.length > 0) {
+              const htmlContent = buildDisplayContent(parsedList);
+              displayContent = htmlContent;
+              
+              noteToggle.innerHTML = htmlContent;
+              renderLatexInElement(noteToggle);
+              
+              console.log("Rendering complete with LaTeX!");
+            } else {
+              throw new Error("Parsed result is not a valid array");
+            }
+          } catch (e) {
+            console.error("JSON parse error:", e);
+            console.log("English block:", englishBlock);
+            
+            noteToggle.innerHTML = `<div class="error-message">
+              <p><strong>Content processing error</strong></p>
+              <p>Error: ${e.message}</p>
+            </div>`;
+          }
+
+          if (!uniqueCodeDetected) {
+            window.LAST_FULL_RESPONSE = fullResponse;
+            window.LAST_PARSED_DATA = {
+              english: parsedList,
+              tamil: tamilBlock.trim()
+            };
+          }
           
-          // Process and render final display content
-          const processedContent = processDisplayContent(displayContent);
-          noteToggle.innerHTML = marked.parse(processedContent);
-          
-          // Store full response with language appended (remove trailing #### if present)
-          const cleanedResponse = fullResponse.trim().replace(/####\s*$/, '').trim();
-          input = cleanedResponse + (cleanedResponse.endsWith('&&&' + selectedLanguage.trim()) ? '' : '\n&&&' + selectedLanguage.trim());
-          
-
           return;
         }
 
+        const clean = normalizeChunk(rawData);
+        fullResponseRaw += clean;
+
+        if (!tamilStarted && clean.includes("&&&&")) {
+          tamilStarted = true;
+          const [before, after] = clean.split("&&&&", 2);
+          englishBlock += before;
+          tamilBlock += after || "";
+        } else {
+          if (!tamilStarted) {
+            englishBlock += clean;
+          } else {
+            tamilBlock += clean;
+          }
+        }
+
+        // Progressive rendering
         try {
-          const content = JSON.parse(data);
-          fullResponse += content; // Always store in full response
+          const arr = JSON.parse(englishBlock);
           
-          // Progressive update: extract and display English content
-          displayContent = extractEnglishContent(fullResponse);
-          const processedContent = processDisplayContent(displayContent);
-          noteToggle.innerHTML = marked.parse(processedContent);
-          
-        } catch (e) {
-          // If not JSON, add raw data
-          fullResponse += data;
-          
-          // Progressive update: extract and display English content
-          displayContent = extractEnglishContent(fullResponse);
-          const processedContent = processDisplayContent(displayContent);
-          noteToggle.innerHTML = marked.parse(processedContent);
+          if (Array.isArray(arr) && arr.length > 0) {
+            parsedList = arr;
+            const htmlContent = buildDisplayContent(arr);
+            displayContent = htmlContent;
+            
+            noteToggle.innerHTML = htmlContent;
+            renderLatexInElement(noteToggle);
+          }
+        } catch (parseError) {
+          // Not ready yet
         }
       }
-    }
-    buffer = lines[lines.length - 1];
-  }
-} catch (e) {
-  if (e.name === 'AbortError') {
-    displayContent = extractEnglishContent(fullResponse);
-    const processedContent = processDisplayContent(displayContent);
-    noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
-    const url = "error.mp4";
-    source.src = url;
-    video.load();
-    panelEl.classList.remove("opened");
-    overlayEl.classList.remove("show");
-    document.querySelector('.actions .fa-file-lines').classList.remove('active');
-  } else {
-    out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
-    console.error('Stream error:', e);
-    const url = "error.mp4";
-    source.src = url;
-    video.load();
-    panelEl.classList.remove("opened");
-    overlayEl.classList.remove("show");
-    document.querySelector('.actions .fa-file-lines').classList.remove('active');
-  }
-} finally {
-  controller = null;
-}
-}
 
+      buffer = lines[lines.length - 1];
+    }
+
+  } catch (e) {
+    const errorContent = displayContent || "<p>An error occurred</p>";
+    noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
+
+    if (e.name === "AbortError") {
+      console.warn("Request aborted by user.");
+    } else {
+      console.error("Stream error:", e);
+    }
+  } finally {
+    controller = null;
+  }
+} else {
+  try {
+    const response = await fetch(BACKEND_URL_TEXT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, selectedLanguage, selectedMode }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+    let displayContent = '';
+    let uniqueCodeDetected = false;
+
+    // Helper function to extract English content from full response
+    function extractEnglishContent(text) {
+      const sections = text.split('####');
+      let englishParts = [];
+      
+      for (let section of sections) {
+        section = section.trim();
+        if (!section) continue;
+        
+        const parts = section.split('%%%%');
+        if (parts.length > 0) {
+          englishParts.push(parts[0].trim());
+        }
+      }
+      
+      return englishParts.join('\n\n\n');
+    }
+
+    // Helper function to process display content
+    function processDisplayContent(text) {
+      return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1.5em 0 0.5em 0; padding-bottom: 0.3em; border-bottom: 2px solid #4a90e2;">$1</h2>');
+    }
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            displayContent = extractEnglishContent(fullResponse);
+            const processedContent = processDisplayContent(displayContent);
+            noteToggle.innerHTML = marked.parse(processedContent);
+            
+            // Check for unique code before storing
+            if (fullResponse.includes("unique")) {
+              uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">This question requires numerical solving. Switch to <i>Solve Smart</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              document.querySelector('.actions .fa-file-lines').classList.remove('active');
+              const url = "zvideo1.mp4";
+              source.src = url;
+              video.load();
+              toggleSheet();
+              switchTab('mode');
+              condition='unique';
+              return;
+
+            }
+            else if (fullResponse.includes("wrong")) {
+              uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">I couldn’t understand your request clearly.Please rephrase your question and <i>try again.</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              const url = "wrong.mp4";
+              source.src = url;
+              video.load();
+              condition='wrong';
+
+              return;
+            } 
+            else {
+              const cleanedResponse = fullResponse.trim().replace(/####\s*$/, '').trim();
+              
+              if (cleanedResponse.includes('&&&' + selectedLanguage.trim())) {
+                input = cleanedResponse;
+              } else if (cleanedResponse.includes('&&&')) {
+                input = cleanedResponse;
+              } else {
+                input = cleanedResponse + '\n&&&' + selectedLanguage.trim();
+              }
+              
+              console.log("Full Response:", input);
+            }
+            
+            console.log("Display Content:", displayContent);
+            return;
+          }
+
+          try {
+            const content = JSON.parse(data);
+            fullResponse += content;
+            
+            displayContent = extractEnglishContent(fullResponse);
+            const processedContent = processDisplayContent(displayContent);
+            noteToggle.innerHTML = marked.parse(processedContent);
+            
+          } catch (e) {
+            fullResponse += data;
+            
+            displayContent = extractEnglishContent(fullResponse);
+            const processedContent = processDisplayContent(displayContent);
+            noteToggle.innerHTML = marked.parse(processedContent);
+          }
+        }
+      }
+      buffer = lines[lines.length - 1];
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      const processedContent = processDisplayContent(displayContent);
+      noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+    } else {
+      out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
+      console.error('Stream error:', e);
+    }
+  } finally {
+    controller = null;
+  }
+}
   }
 
 // Fixed streamAskImage: changed split('\n') to split('\n\n') for consistency with SSE format;
@@ -631,260 +663,12 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
  
   controller = new AbortController();
   
-    if (selectedMode=="Solve Smart"){
-
- try {
- const formData = new FormData();
-    formData.append('image', imageFile);
-    formData.append('selectedLanguage', selectedLanguage);
-    formData.append('selectedMode', selectedMode);
-    const response = await fetch(BACKEND_URL_IMAGE, {
-      method: "POST",
-      headers: {'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
-      body: formData,
-      signal: controller.signal
-    });                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-
-  // Buffers / state
-  let buffer = "";
-  let fullResponseRaw = "";
-  let englishBlock = "";
-  let tamilBlock = "";
-  let tamilStarted = false;
-
-  let parsedList = [];
-  let displayContent = "";
-
-  // Helper: normalize incoming chunk
-  function normalizeChunk(data) {
-    try {
-      const parsed = JSON.parse(data);
-      if (typeof parsed === "string") return parsed;
-      return JSON.stringify(parsed);
-    } catch {
-      let s = data.replace(/^"+|"+$/g, "");
-      s = s.replace(/\\"/g, '"');
-      s = s.replace(/\\n/g, "\n");
-      s = s.replace(/\\t/g, "\t");
-      return s;
-    }
-  }
-
-  // Helper: Remove # and % symbols
-  function processLatexText(text) {
-    if (!text) return "";
-    return text
-      .replace(/#%/g, '')  // Remove #% combination first
-      .replace(/#/g, '')   // Remove all # symbols
-      .replace(/%/g, '')   // Remove all % symbols
-      .trim();
-  }
-
-  // Helper: Format content items
-  function formatContentItem(item) {
-    if (!Array.isArray(item) || item.length < 2) return "";
     
-    const [type, content] = item;
-    const processed = processLatexText(content);
-    
-    // Skip empty content
-    if (!processed) return "";
-    
-    switch (type) {
-      case "title":
-        return `<div class="content-title">
-          <h1>${processed}</h1>
-        </div>`;
-      
-      case "text":
-        return `<div class="content-text">
-          <p>${processed}</p>
-        </div>`;
-      
-      case "equation":
-        return `<div class="content-equation">
-          $$${processed}$$
-        </div>`;
-      
-      case "code":
-        return `<div class="content-code">
-          <pre><code>${content}</code></pre>
-        </div>`;
-      
-      case "list":
-        return `<div class="content-list">
-          ${processed}
-        </div>`;
-      
-      default:
-        return `<div class="content-default">
-          <p>${processed}</p>
-        </div>`;
-    }
-  }
 
-  // Helper: Render LaTeX in DOM element (FIXED VERSION)
-  function renderLatexInElement(element) {
-    if (typeof renderMathInElement !== 'undefined') {
-      try {
-        // Call renderMathInElement on the actual DOM element
-        renderMathInElement(element, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\[', right: '\\]', display: true },
-            { left: '\\(', right: '\\)', display: false }
-          ],
-          throwOnError: false,
-          errorColor: '#cc0000',
-          trust: true,
-          strict: false,
-          macros: {
-            "\\RR": "\\mathbb{R}",
-            "\\NN": "\\mathbb{N}",
-            "\\ZZ": "\\mathbb{Z}",
-            "\\QQ": "\\mathbb{Q}"
-          }
-        });
-      } catch (e) {
-        console.error("KaTeX rendering error:", e);
-      }
-    } else {
-      console.warn("renderMathInElement is not available. Make sure KaTeX auto-render is loaded.");
-    }
-  }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
 
-  // Helper: Build display content from parsed array
-  function buildDisplayContent(arr) {
-    const items = arr
-      .filter(item => Array.isArray(item) && item.length >= 2)
-      .map(formatContentItem)
-      .filter(html => html.trim() !== "") // Remove empty items
-      .join("\n");
-    
-    return `<div class="math-content-wrapper">${items}</div>`;
-  }
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-
-    for (let i = 0; i < lines.length - 1; i++) {
-      const line = lines[i].trim();
-      if (!line.startsWith("data: ")) continue;
-      const rawData = line.slice(6);
-
-      if (rawData === "[DONE]") {
-        fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
-        console.log("Final stored input:", fullResponse);
-
-        try {
-          // Parse the JSON
-          parsedList = JSON.parse(englishBlock);
-          
-          if (Array.isArray(parsedList) && parsedList.length > 0) {
-            // Build HTML content
-            const htmlContent = buildDisplayContent(parsedList);
-            displayContent = htmlContent;
-            
-            // STEP 1: Set HTML first
-            noteToggle.innerHTML = htmlContent;
-            
-            // STEP 2: Then render LaTeX on the DOM element
-            renderLatexInElement(noteToggle);
-            
-            console.log("Rendering complete with LaTeX!");
-          } else {
-            throw new Error("Parsed result is not a valid array");
-          }
-        } catch (e) {
-          console.error("JSON parse error:", e);
-          console.log("English block:", englishBlock);
-          
-          noteToggle.innerHTML = `<div class="error-message">
-            <p><strong>Content processing error</strong></p>
-            <p>Error: ${e.message}</p>
-          </div>`;
-        }
-
-        window.LAST_FULL_RESPONSE = fullResponse;
-        window.LAST_PARSED_DATA = {
-          english: parsedList,
-          tamil: tamilBlock.trim()
-        };
-        
-        return;
-      }
-
-      const clean = normalizeChunk(rawData);
-      fullResponseRaw += clean;
-
-      if (!tamilStarted && clean.includes("&&&&")) {
-        tamilStarted = true;
-        const [before, after] = clean.split("&&&&", 2);
-        englishBlock += before;
-        tamilBlock += after || "";
-      } else {
-        if (!tamilStarted) {
-          englishBlock += clean;
-        } else {
-          tamilBlock += clean;
-        }
-      }
-
-      // Progressive rendering
-      try {
-        const arr = JSON.parse(englishBlock);
-        
-        if (Array.isArray(arr) && arr.length > 0) {
-          parsedList = arr;
-          const htmlContent = buildDisplayContent(arr);
-          displayContent = htmlContent;
-          
-          // STEP 1: Set HTML first
-          noteToggle.innerHTML = htmlContent;
-          
-          // STEP 2: Then render LaTeX
-          renderLatexInElement(noteToggle);
-        }
-      } catch (parseError) {
-        // Not ready yet, silent fail during progressive parsing
-      }
-    }
-
-    buffer = lines[lines.length - 1];
-  }
-
-} catch (e) {
-  const errorContent = displayContent || "<p>An error occurred</p>";
-  noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
-  const url = "error.mp4";
-    source.src = url;
-    video.load();
-    panelEl.classList.remove("opened");
-    overlayEl.classList.remove("show");
-    document.querySelector('.actions .fa-file-lines').classList.remove('active');
-
-  if (e.name === "AbortError") {
-    console.warn("Request aborted by user.");
-  } else {
-    console.error("Stream error:", e);
-  }
-} finally {
-  controller = null;
-}}
-  else{
-     try {
+ if (selectedMode == "Solve Smart") {
+  try {
     const formData = new FormData();
     formData.append('image', imageFile);
     formData.append('selectedLanguage', selectedLanguage);
@@ -894,122 +678,409 @@ async function streamAskImage(imageFile, selectedLanguage, selectedMode) {
       headers: {'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
       body: formData,
       signal: controller.signal
-    });
+    });      
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${await response.text()}`);
     }
-     const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let fullResponse = ''; // Background storage for complete response
-  let displayContent = ''; // Content to display (English only)
 
-  // Helper function to extract English content from full response
-  function extractEnglishContent(text) {
-    // Split by #### to get individual sections
-    const sections = text.split('####');
-    
-    let englishParts = [];
-    
-    for (let section of sections) {
-      section = section.trim();
-      if (!section) continue;
-      
-      // Check if section contains &&&
-      if (true) {
-        // Split at first occurrence of \n\n to separate English from Tamil
-        const parts = section.split('\n\n');
-        if (parts.length > 0) {
-          englishParts.push(parts[0].trim());
-        }
-      } else {
-        // No separator yet, include the whole section
-        englishParts.push(section.trim());
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    // Buffers / state
+    let buffer = "";
+    let fullResponseRaw = "";
+    let englishBlock = "";
+    let tamilBlock = "";
+    let tamilStarted = false;
+
+    let parsedList = [];
+    let displayContent = "";
+    let uniqueCodeDetected = false;
+
+    // Helper: normalize incoming chunk
+    function normalizeChunk(data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (typeof parsed === "string") return parsed;
+        return JSON.stringify(parsed);
+      } catch {
+        let s = data.replace(/^"+|"+$/g, "");
+        s = s.replace(/\\"/g, '"');
+        s = s.replace(/\\n/g, "\n");
+        s = s.replace(/\\t/g, "\t");
+        return s;
       }
     }
-    
-    return englishParts.join('\n\n\n'); // Join with double line gaps
+
+    // Helper: Remove # and % symbols
+    function processLatexText(text) {
+      if (!text) return "";
+      return text
+        .replace(/#%/g, '')
+        .replace(/#/g, '')
+        .replace(/%/g, '')
+        .trim();
+    }
+  function parseMixedContent(text) {
+  if (!text) return "";
+
+  const parts = text.split("#");
+  let result = "";
+
+  for (let part of parts) {
+    part = part.trim();
+
+    // 🔥 Math segment (starts with %)
+    if (part.startsWith("%")) {
+      const math = part.slice(1).trim(); // remove starting %
+      result += ` \\(${math}\\) `;
+    }
+    // Normal text
+    else {
+      result += processLatexText(part) + " ";
+    }
   }
 
-  // Helper function to process display content (remove ### and make blue/bold)
-  function processDisplayContent(text) {
-    // Remove ### and make that line bold with blue color
-    return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1.5em 0 0.5em 0; padding-bottom: 0.3em; border-bottom: 2px solid #4a90e2;">$1</h2>');
+  return result.trim();
+}
+function formatContentItem(item) {
+  if (!Array.isArray(item) || item.length < 2) return "";
+
+  const [type, content] = item;
+
+  const processed =
+    type === "title" || type === "text"
+      ? parseMixedContent(content)
+      : processLatexText(content);
+
+  switch (type) {
+    case "title":
+      return `<div class="content-title"><h1>${processed}</h1></div>`;
+
+    case "text":
+      return `<div class="content-text"><p>${processed}</p></div>`;
+
+    case "equation":
+      return `<div class="content-equation">$$${processed}$$</div>`;
+
+    case "code":
+      return `<div class="content-code"><pre><code>${content}</code></pre></div>`;
+
+    case "list":
+      return `<div class="content-list">${processed}</div>`;
+
+    default:
+      return `<p>${processed}</p>`;
   }
+}
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
+    // Helper: Render LaTeX in DOM element
+    function renderLatexInElement(element) {
+      if (typeof renderMathInElement !== 'undefined') {
+        try {
+          renderMathInElement(element, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\[', right: '\\]', display: true },
+              { left: '\\(', right: '\\)', display: false }
+            ],
+            throwOnError: false,
+            errorColor: '#cc0000',
+            trust: true,
+            strict: false,
+            macros: {
+              "\\RR": "\\mathbb{R}",
+              "\\NN": "\\mathbb{N}",
+              "\\ZZ": "\\mathbb{Z}",
+              "\\QQ": "\\mathbb{Q}"
+            }
+          });
+        } catch (e) {
+          console.error("KaTeX rendering error:", e);
+        }
+      }
+    }
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
+    // Helper: Build display content from parsed array
+    function buildDisplayContent(arr) {
+      const items = arr
+        .filter(item => Array.isArray(item) && item.length >= 2)
+        .map(formatContentItem)
+        .filter(html => html.trim() !== "")
+        .join("\n");
+      
+      return `<div class="math-content-wrapper">${items}</div>`;
+    }
 
-    for (let i = 0; i < lines.length - 1; i++) {
-      const line = lines[i].trim();
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (data === '[DONE]') {
-          // Extract English content from full response
-          displayContent = extractEnglishContent(fullResponse);
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim();
+        if (!line.startsWith("data: ")) continue;
+        const rawData = line.slice(6);
+
+        if (rawData === "[DONE]") {
+          // Check for unique code before storing
+          if (fullResponseRaw.includes("unique")) {
+            uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">Solve Smartl supports numerical problems only. Switch to <i>Simple Learn</i> or <i>Learn Deeper</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              document.querySelector('.actions .fa-file-lines').classList.remove('active');
+              const url = "zvideo.mp4";
+              source.src = url;
+              video.load();
+              toggleSheet();
+              switchTab('mode');
+              condition='unique';
+              return;
+          } 
+          else if (fullResponse.includes("wrong")) {
+              uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">.I couldn’t understand your request clearly.Please rephrase your question and <i>try again.</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              const url = "wrong.mp4";
+              source.src = url;
+              video.load();
+              condition='wrong';
+
+              return;
+            } 
+            else {
+            fullResponse = fullResponseRaw + "&&&" + selectedLanguage.trim();
+            console.log("Final stored input:", fullResponse);
+          }
+
+          try {
+            parsedList = JSON.parse(englishBlock);
+            
+            if (Array.isArray(parsedList) && parsedList.length > 0) {
+              const htmlContent = buildDisplayContent(parsedList);
+              displayContent = htmlContent;
+              
+              noteToggle.innerHTML = htmlContent;
+              renderLatexInElement(noteToggle);
+              
+              console.log("Rendering complete with LaTeX!");
+            } else {
+              throw new Error("Parsed result is not a valid array");
+            }
+          } catch (e) {
+            console.error("JSON parse error:", e);
+            console.log("English block:", englishBlock);
+            
+            noteToggle.innerHTML = `<div class="error-message">
+              <p><strong>Content processing error</strong></p>
+              <p>Error: ${e.message}</p>
+            </div>`;
+          }
+
+          if (!uniqueCodeDetected) {
+            window.LAST_FULL_RESPONSE = fullResponse;
+            window.LAST_PARSED_DATA = {
+              english: parsedList,
+              tamil: tamilBlock.trim()
+            };
+          }
           
-          // Process and render final display content
-          const processedContent = processDisplayContent(displayContent);
-          noteToggle.innerHTML = marked.parse(processedContent);
-          
-          // Store full response with language appended (remove trailing #### if present)
-          const cleanedResponse = fullResponse.trim().replace(/####\s*$/, '').trim();
-          input = cleanedResponse + (cleanedResponse.endsWith('&&&' + selectedLanguage.trim()) ? '' : '\n&&&' + selectedLanguage.trim());
-          
-
           return;
         }
 
+        const clean = normalizeChunk(rawData);
+        fullResponseRaw += clean;
+
+        if (!tamilStarted && clean.includes("&&&&")) {
+          tamilStarted = true;
+          const [before, after] = clean.split("&&&&", 2);
+          englishBlock += before;
+          tamilBlock += after || "";
+        } else {
+          if (!tamilStarted) {
+            englishBlock += clean;
+          } else {
+            tamilBlock += clean;
+          }
+        }
+
+        // Progressive rendering
         try {
-          const content = JSON.parse(data);
-          fullResponse += content; // Always store in full response
+          const arr = JSON.parse(englishBlock);
           
-          // Progressive update: extract and display English content
-          displayContent = extractEnglishContent(fullResponse);
-          const processedContent = processDisplayContent(displayContent);
-          noteToggle.innerHTML = marked.parse(processedContent);
-          
-        } catch (e) {
-          // If not JSON, add raw data
-          fullResponse += data;
-          
-          // Progressive update: extract and display English content
-          displayContent = extractEnglishContent(fullResponse);
-          const processedContent = processDisplayContent(displayContent);
-          noteToggle.innerHTML = marked.parse(processedContent);
+          if (Array.isArray(arr) && arr.length > 0) {
+            parsedList = arr;
+            const htmlContent = buildDisplayContent(arr);
+            displayContent = htmlContent;
+            
+            noteToggle.innerHTML = htmlContent;
+            renderLatexInElement(noteToggle);
+          }
+        } catch (parseError) {
+          // Not ready yet
         }
       }
+
+      buffer = lines[lines.length - 1];
     }
-    buffer = lines[lines.length - 1];
+
+  } catch (e) {
+    const errorContent = displayContent || "<p>An error occurred</p>";
+    noteToggle.innerHTML = `${errorContent}<div class="error-message"><strong>[Error / Stopped]</strong><br>${e.message}</div>`;
+
+    if (e.name === "AbortError") {
+      console.warn("Request aborted by user.");
+    } else {
+      console.error("Stream error:", e);
+    }
+  } finally {
+    controller = null;
   }
-} catch (e) {
-  if (e.name === 'AbortError') {
-    displayContent = extractEnglishContent(fullResponse);
-    const processedContent = processDisplayContent(displayContent);
-    noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
-    const url = "error.mp4";
-    source.src = url;
-    video.load();
-    panelEl.classList.remove("opened");
-    overlayEl.classList.remove("show");
-    document.querySelector('.actions .fa-file-lines').classList.remove('active');
-  } else {
-    out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
-    console.error('Stream error:', e);
-    const url = "error.mp4";
-    source.src = url;
-    video.load();
-    panelEl.classList.remove("opened");
-    overlayEl.classList.remove("show");
-    document.querySelector('.actions .fa-file-lines').classList.remove('active');
+} else {
+  try {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('selectedLanguage', selectedLanguage);
+    formData.append('selectedMode', selectedMode);
+    const response = await fetch(BACKEND_URL_IMAGE, {
+      method: "POST",
+      headers: {'X-API-KEY': 'rkmentormindzofficaltokenkey12345'},
+      body: formData,
+      signal: controller.signal
+    });      
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+    let displayContent = '';
+    let uniqueCodeDetected = false;
+
+    // Helper function to extract English content from full response
+    function extractEnglishContent(text) {
+      const sections = text.split('####');
+      let englishParts = [];
+      
+      for (let section of sections) {
+        section = section.trim();
+        if (!section) continue;
+        
+        const parts = section.split('%%%%');
+        if (parts.length > 0) {
+          englishParts.push(parts[0].trim());
+        }
+      }
+      
+      return englishParts.join('\n\n\n');
+    }
+
+    // Helper function to process display content
+    function processDisplayContent(text) {
+      return text.replace(/^###\s*(.+)$/gm, '<h2 style="color: #4a90e2; font-weight: bold; margin: 1.5em 0 0.5em 0; padding-bottom: 0.3em; border-bottom: 2px solid #4a90e2;">$1</h2>');
+    }
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            displayContent = extractEnglishContent(fullResponse);
+            const processedContent = processDisplayContent(displayContent);
+            noteToggle.innerHTML = marked.parse(processedContent);
+            
+            // Check for unique code before storing
+            if (fullResponse.includes("unique")) {
+              uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">This question requires numerical solving. Switch to <i>Solve Smart</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              document.querySelector('.actions .fa-file-lines').classList.remove('active');
+              const url = "zvideo1.mp4";
+              source.src = url;
+              video.load();
+              toggleSheet();
+              switchTab('mode');
+              condition='unique';
+              return;
+
+            }
+            else if (fullResponse.includes("wrong")) {
+              uniqueCodeDetected = true;
+              noteToggle.innerHTML ='<p style="color: blue; margin-top: 1em;">I couldn’t understand your request clearly.Please rephrase your question and <i>try again.</i>.</p>';
+              panelEl.classList.remove("opened");
+              overlayEl.classList.remove("show");
+              const url = "wrong.mp4";
+              source.src = url;
+              video.load();
+              condition='wrong';
+
+              return;
+            } 
+            else {
+              const cleanedResponse = fullResponse.trim().replace(/####\s*$/, '').trim();
+              
+              if (cleanedResponse.includes('&&&' + selectedLanguage.trim())) {
+                input = cleanedResponse;
+              } else if (cleanedResponse.includes('&&&')) {
+                input = cleanedResponse;
+              } else {
+                input = cleanedResponse + '\n&&&' + selectedLanguage.trim();
+              }
+              
+              console.log("Full Response:", input);
+            }
+            
+            console.log("Display Content:", displayContent);
+            return;
+          }
+
+          try {
+            const content = JSON.parse(data);
+            fullResponse += content;
+            
+            displayContent = extractEnglishContent(fullResponse);
+            const processedContent = processDisplayContent(displayContent);
+            noteToggle.innerHTML = marked.parse(processedContent);
+            
+          } catch (e) {
+            fullResponse += data;
+            
+            displayContent = extractEnglishContent(fullResponse);
+            const processedContent = processDisplayContent(displayContent);
+            noteToggle.innerHTML = marked.parse(processedContent);
+          }
+        }
+      }
+      buffer = lines[lines.length - 1];
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      const processedContent = processDisplayContent(displayContent);
+      noteToggle.innerHTML = marked.parse(processedContent) + '<p style="color: #cc0000; margin-top: 1em;">[Stopped by user]</p>';
+    } else {
+      out.innerHTML = `<span style="color: #cc0000;">Error: ${e.message}</span>`;
+      console.error('Stream error:', e);
+    }
+  } finally {
+    controller = null;
   }
-} finally {
-  controller = null;
-}
 }
 
 }
@@ -1033,13 +1104,16 @@ async function streamResponse(userPrompt = '') {
     await streamAsk(question, selectedLanguage, selectedMode);
   }
  
+  if (condition!="unique" && condition!="wrong")
+  {
+ 
   if (selectedMode=="Solve Smart"){
     loadVideomath();
   }
   else{
     loadVideo();
   }
- 
+ }
   updateSendIcon();
 }
 // Settings menu
