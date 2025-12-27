@@ -146,9 +146,6 @@ marked.setOptions({
   smartypants: true
 });
 async function loadVideo() {
-  panelEl.classList.remove("opened");
-  overlayEl.classList.remove("show");
-  document.querySelector('.actions .fa-file-lines').classList.remove('active');
   const durationText = input;
   try {
     const response = await fetch('https://gateway2.rksreepathi1.workers.dev/generate', {
@@ -159,6 +156,10 @@ async function loadVideo() {
       },
       body: JSON.stringify({ duration: durationText })
     });
+    panelEl.classList.remove("opened");
+    overlayEl.classList.remove("show");
+    document.querySelector('.actions .fa-file-lines').classList.remove('active');
+  
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     source.src = url;
@@ -177,11 +178,7 @@ async function loadVideo() {
   }
 }
 async function loadVideomath() {
-  if (panelEl) panelEl.classList.remove("opened");
-  if (overlayEl) overlayEl.classList.remove("show");
-
-  const fileIcon = document.querySelector('.actions .fa-file-lines');
-  if (fileIcon) fileIcon.classList.remove('active');
+  
 
   if (!video || !source) {
     console.error('Video elements not found');
@@ -202,7 +199,11 @@ async function loadVideomath() {
     );
 
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (panelEl) panelEl.classList.remove("opened");
+  if (overlayEl) overlayEl.classList.remove("show");
 
+  const fileIcon = document.querySelector('.actions .fa-file-lines');
+  if (fileIcon) fileIcon.classList.remove('active');
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     source.src = url;
