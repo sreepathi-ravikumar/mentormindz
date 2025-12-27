@@ -1271,7 +1271,7 @@ document.querySelector('.sidebar-settings').addEventListener('click', () => {
 const settingsSheet = document.getElementById("settingsSheet");
 const languageList = document.getElementById("languageList");
 const allLanguages = [
-  'English', 'Hindi', 'Chinese', 'Spanish', 'Arabic', 'French', 'Bengali', 'Portuguese', 'Russian', 'Tamil'
+ 'English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', ' Marathi', 'Gujarati', 'Urdu', 'Spanish'
 ];
 // Show Languages
 function filterLanguages(query) {
