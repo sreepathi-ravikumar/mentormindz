@@ -178,13 +178,6 @@ async function loadVideo() {
   }
 }
 async function loadVideomath() {
-  
-
-  if (!video || !source) {
-    console.error('Video elements not found');
-    return;
-  }
-
   try {
     const response = await fetch(
       `https://gateway2.rksreepathi1.workers.dev/generatemath`,
