@@ -41,10 +41,43 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+            z-index: 100;
+            border: none;
+        }
+
+        .back-button:hover {
+            background-color: var(--bg);
+            transform: scale(1.05);
+        }
+
+        .back-button:active {
+            transform: scale(0.95);
+        }
+
+        .back-button i {
+            color: var(--text-color);
+            font-size: 18px;
+        }
+
         .container {
             max-width: 420px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 70px 20px 20px;
             min-height: 100vh;
         }
 
@@ -146,6 +179,13 @@
             transition: background-color 0.15s ease;
         }
 
+        .item-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
         .email {
             padding: 16px;
             display: flex;
@@ -171,11 +211,13 @@
             content: '›';
             color: var(--icon-color);
             font-size: 18px;
+            margin-left: auto;
         }
 
         .current-selection {
             color: var(--icon-color);
             font-size: 14px;
+            margin-left: auto;
             margin-right: 8px;
         }
 
@@ -379,6 +421,10 @@
     </style>
 </head>
 <body>
+    <button class="back-button" onclick="goBack()">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+
     <div id="loadingScreen" class="loading">
         <div class="spinner"></div>
         <div>Loading profile...</div>
@@ -404,15 +450,15 @@
             <div class="card">
                 <div class="item" onclick="openSetting('theme')">
                     <span>Theme</span>
-                    <span class="current-selection" id="themeValue">System</span>
+                    <span class="current-selection" id="themeDisplay">System</span>
                 </div>
                 <div class="item" onclick="openSetting('appLanguage')">
                     <span>App Language</span>
-                    <span class="current-selection" id="appLanguageValue">English</span>
+                    <span class="current-selection" id="appLanguageDisplay">English</span>
                 </div>
                 <div class="item" onclick="openSetting('voiceLanguage')">
                     <span>Voice Language</span>
-                    <span class="current-selection" id="voiceLanguageValue">English Voice</span>
+                    <span class="current-selection" id="voiceLanguageDisplay">English Voice</span>
                 </div>
             </div>
         </div>
@@ -425,7 +471,7 @@
             <div class="card">
                 <div class="item" onclick="openSetting('appTone')">
                     <span>App Tone</span>
-                    <span class="current-selection" id="appToneValue">Aurora Blue</span>
+                    <span class="current-selection" id="appToneDisplay">Aurora Blue</span>
                 </div>
             </div>
         </div>
@@ -433,8 +479,8 @@
         <div class="section">
             <div class="section-title">Legal</div>
             <div class="card">
-                <div class="item" onclick="window.open('https://mentormindz.com/terms', '_blank')">Terms & Conditions</div>
-                <div class="item" onclick="window.open('https://mentormindz.com/privacy', '_blank')">Privacy Policy</div>
+                <div class="item" onclick="alert('Terms & Conditions Page')">Terms & Conditions</div>
+                <div class="item" onclick="alert('Privacy Policy Page')">Privacy Policy</div>
             </div>
         </div>
 
@@ -459,14 +505,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script>
-        // ========== FIREBASE CONFIGURATION ==========
+        // ========== FIREBASE CONFIG - REPLACE WITH YOUR VALUES ==========
         const firebaseConfig = {
-            apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
-      authDomain: "mentormindz-8211a.firebaseapp.com",
-      projectId: "mentormindz-8211a",
-      storageBucket: "mentormindz-8211a.firebasestorage.app",
-      messagingSenderId: "913045756560",
-      appId: "1:913045756560:web:65cc21aca54ac1c2739615"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -474,7 +520,7 @@
         const db = firebase.firestore();
         let uid = null;
 
-        // ========== SETTINGS CONFIGURATION ==========
+        // ========== SETTINGS ==========
         const SETTINGS = {
             appLanguage: {
                 title: "App Language",
@@ -510,46 +556,49 @@
             theme: "System",
             appLanguage: "English",
             voiceLanguage: "English Voice",
-            appTone: "#6366f1"
+            appTone: "#6366f1",
+            appToneName: "Aurora Blue"
         };
 
-        // ========== FIREBASE AUTH STATE ==========
+        // ========== STEP 1: LOAD DATA FROM FIREBASE ==========
         auth.onAuthStateChanged(async (user) => {
-            const loadingScreen = document.getElementById('loadingScreen');
-            const mainContent = document.getElementById('mainContent');
-
             if (!user) {
-                console.log('No user logged in, redirecting to login...');
-                window.location.href = 'login.html';
+                window.location.href = '/login.html';
                 return;
             }
 
             uid = user.uid;
-            
-            // Update UI with user info
             const displayName = user.displayName || user.email.split('@')[0];
+            
+            // Update profile display
             document.getElementById('profileName').textContent = displayName;
             document.getElementById('emailDisplay').textContent = `Email: ${user.email}`;
 
             try {
-                // Load settings from Firestore
+                // Load from Firestore
                 const docRef = db.collection("users").doc(uid);
                 const doc = await docRef.get();
 
                 if (doc.exists) {
                     const data = doc.data();
+                    console.log("📥 Loaded data from Firestore:", data);
                     
+                    // Load preferences
                     if (data.preferences) {
                         currentSelection.theme = data.preferences.theme || "System";
                         currentSelection.appLanguage = data.preferences.appLanguage || "English";
                         currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
                     }
                     
-                    if (data.account) {
-                        currentSelection.appTone = data.account.appTone || "#6366f1";
+                    // Load app tone
+                    if (data.account && data.account.appTone) {
+                        currentSelection.appTone = data.account.appTone;
+                        // Find tone name
+                        const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
+                        currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
                     }
                 } else {
-                    // Create initial document for new users
+                    // Create new user document
                     await docRef.set({
                         email: user.email,
                         displayName: displayName,
@@ -563,74 +612,35 @@
                         },
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
+                    console.log("✅ Created new user document");
                 }
 
-                // Apply loaded settings
+                // Apply settings to UI
                 applyTheme(currentSelection.theme);
                 document.documentElement.style.setProperty("--primary-color", currentSelection.appTone);
-                updateDisplayValues();
+                updateAllDisplays(); // ⬅️ THIS IS KEY!
 
             } catch (error) {
-                console.error('Error loading settings:', error);
-                alert('Failed to load settings. Using defaults.');
+                console.error('❌ Error loading settings:', error);
             }
 
             // Show main content
-            loadingScreen.classList.add('hidden');
-            mainContent.classList.remove('hidden');
+            document.getElementById('loadingScreen').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
         });
 
-        // ========== SAVE TO FIRESTORE ==========
-        async function savePreferences() {
-            if (!uid) return;
-            
-            try {
-                await db.collection("users").doc(uid).set({
-                    preferences: {
-                        theme: currentSelection.theme,
-                        appLanguage: currentSelection.appLanguage,
-                        voiceLanguage: currentSelection.voiceLanguage
-                    },
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-                
-                console.log('Preferences saved successfully');
-            } catch (error) {
-                console.error('Error saving preferences:', error);
-                alert('Failed to save preferences');
-            }
+        // ========== STEP 2: UPDATE DISPLAY VALUES (THIS WAS MISSING!) ==========
+        function updateAllDisplays() {
+            document.getElementById('themeDisplay').textContent = currentSelection.theme;
+            document.getElementById('appLanguageDisplay').textContent = currentSelection.appLanguage;
+            document.getElementById('voiceLanguageDisplay').textContent = currentSelection.voiceLanguage;
+            document.getElementById('appToneDisplay').textContent = currentSelection.appToneName;
+            console.log("🔄 Updated all displays:", currentSelection);
         }
 
-        async function saveAppTone() {
-            if (!uid) return;
-            
-            try {
-                await db.collection("users").doc(uid).set({
-                    account: {
-                        appTone: currentSelection.appTone
-                    },
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-                
-                console.log('App tone saved successfully');
-            } catch (error) {
-                console.error('Error saving app tone:', error);
-                alert('Failed to save app tone');
-            }
-        }
+        
 
-        // ========== UI FUNCTIONS ==========
-        function updateDisplayValues() {
-            document.getElementById('themeValue').textContent = currentSelection.theme;
-            document.getElementById('appLanguageValue').textContent = currentSelection.appLanguage;
-            document.getElementById('voiceLanguageValue').textContent = currentSelection.voiceLanguage;
-            
-           const toneName = SETTINGS.appTone.options.find(
-                opt => opt.value === currentSelection.appTone
-            )?.name || 'Aurora Blue';
-            document.getElementById('appToneValue').textContent = toneName;
-        }
-
+        // ========== STEP 3: OPEN SETTINGS SHEET ==========
         function openSetting(key) {
             currentKey = key;
             document.getElementById("sheetTitle").innerText = SETTINGS[key].title;
@@ -651,6 +661,7 @@
             }, 300);
         }
 
+        // ========== STEP 4: RENDER OPTIONS WITH SELECTION ==========
         function renderOptions(list) {
             const box = document.getElementById("options");
             box.innerHTML = "";
@@ -662,7 +673,10 @@
                 const value = opt.value || opt;
                 const name = opt.name || opt;
                 
-                const isSelected = currentSelection[currentKey] === value;
+                // Check if this option is currently selected
+                const isSelected = (currentKey === "appTone") 
+                    ? currentSelection.appTone === value
+                    : currentSelection[currentKey] === value;
                 
                 if (currentKey === "appTone") {
                     const colorPreview = document.createElement("div");
@@ -690,6 +704,56 @@
             renderOptions(filtered);
         }
 
+        // ========== STEP 5: APPLY AND SAVE SETTING ==========
+        async function applySetting(value, name) {
+            console.log(`🔧 Applying ${currentKey}:`, value);
+            
+            // Update local state
+            currentSelection[currentKey] = value;
+            if (currentKey === "appTone") {
+                currentSelection.appToneName = name;
+            }
+            
+            // Apply visual changes immediately
+            if (currentKey === "theme") {
+                applyTheme(value);
+            } else if (currentKey === "appTone") {
+                document.documentElement.style.setProperty("--primary-color", value);
+            }
+            
+            // Update display immediately ⬅️ THIS WAS THE KEY FIX!
+            updateAllDisplays();
+            
+            // Save to Firebase
+            try {
+                if (currentKey === "appTone") {
+                    await db.collection("users").doc(uid).set({
+                        account: {
+                            appTone: value
+                        },
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    console.log("✅ App tone saved to Firebase");
+                } else {
+                    await db.collection("users").doc(uid).set({
+                        preferences: {
+                            theme: currentSelection.theme,
+                            appLanguage: currentSelection.appLanguage,
+                            voiceLanguage: currentSelection.voiceLanguage
+                        },
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    console.log("✅ Preferences saved to Firebase");
+                }
+            } catch (error) {
+                console.error('❌ Error saving to Firebase:', error);
+                alert('Failed to save setting. Please try again.');
+            }
+            
+            closeSheet();
+        }
+
+        // ========== THEME APPLY ==========
         function applyTheme(value) {
             if (value === "Dark") {
                 document.body.classList.add("dark");
@@ -701,33 +765,25 @@
             }
         }
 
-        async function applySetting(value, name) {
-            currentSelection[currentKey] = value;
-            
-            if (currentKey === "theme") {
-                applyTheme(value);
-                await savePreferences();
-            } else if (currentKey === "appLanguage" || currentKey === "voiceLanguage") {
-                await savePreferences();
-            } else if (currentKey === "appTone") {
-                document.documentElement.style.setProperty("--primary-color", value);
-                await saveAppTone();
-            }
-            
-            updateDisplayValues();
-            closeSheet();
-        }
-
+        // ========== LOGOUT ==========
         async function handleLogout() {
             if (confirm("Are you sure you want to logout?")) {
                 try {
                     await auth.signOut();
-                    console.log("User logged out successfully");
-                    window.location.href = 'login.html';
+                    window.location.href = 'home.html';
                 } catch (error) {
-                    console.error('Logout error:', error);
+                    console.error('❌ Logout error:', error);
                     alert('Failed to logout');
                 }
+            }
+        }
+
+        // ========== BACK BUTTON ==========
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'home.html';
             }
         }
 
@@ -739,4 +795,4 @@
         });
     </script>
 </body>
-</html>                                           
+</html>
