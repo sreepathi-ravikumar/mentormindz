@@ -16,7 +16,7 @@
     const avatarDiv = document.querySelector('.avatar');
     const sidebarName = document.querySelector('.sidebar-username');
     const sidebarAvatar = document.querySelector('.sidebar-avatar');
-    const logoutBtn = document.getElementById('logoutBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
  
  
 
@@ -39,7 +39,7 @@
           margin-left:20px;">Login</button>`;
       sidebarName.textContent = 'Guest';
       sidebarAvatar.innerHTML = '<i class="fa-solid fa-user"></i>';
-      logoutBtn.style.display = 'none';
+      settingsBtn.style.display = 'none';
 
       // Add event listener to login button that closes sidebar THEN navigates
       const loginBtn = document.getElementById('customLoginBtn');
@@ -64,16 +64,11 @@
       avatarDiv.innerHTML = `<img src="${photoURL}" alt="User Avatar" style="width:36px;height:36px;border-radius:50%;cursor:pointer;">`;
       sidebarName.textContent = displayName;
       sidebarAvatar.innerHTML = `<img src="${photoURL}" alt="User Avatar" style="width:32px;height:32px;border-radius:50%;">`;
-      logoutBtn.style.display = 'block';
+      settingsBtn.style.display = 'block';
     }
 
-    logoutBtn.addEventListener('click', () => {
-      auth.signOut().then(() => {
-        closeSidebar();
-        showLoggedOutUI();
-      }).catch((error) => {
-        console.error('Logout failed:', error);
-      });
+    settingsBtn.addEventListener('click', () => {
+      window.location.href = 'setting.html';
     });
 
     // Monitor auth state and update UI accordingly
@@ -185,6 +180,7 @@ downloadBtn.addEventListener('click', async () => {
     alert("An error occurred while downloading the video.");
   }
 });
+
 
 
 
