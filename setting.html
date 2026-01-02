@@ -561,73 +561,56 @@
         };
 
         // ========== STEP 1: LOAD DATA FROM FIREBASE ==========
-        auth.onAuthStateChanged(async (user) => {
-            if (!user) {
-                window.location.href = '/login.html';
-                return;
-            }
+        // ✅ NEW CODE - NO LOGIN REDIRECT ✅
+auth.onAuthStateChanged(async (user) => {
+    const loadingScreen = document.getElementById('loadingScreen');
+    const mainContent = document.getElementById('mainContent');
 
-            uid = user.uid;
-            const displayName = user.displayName || user.email.split('@')[0];
+    // If no user, just show error message (don't redirect)
+    if (!user) {
+        loadingScreen.innerHTML = '<div style="color: red;">⚠️ Please login first</div>';
+        console.log('No user found');
+        return;
+    }
+
+    uid = user.uid;
+    
+    // Rest of your code stays the same...
+    const displayName = user.displayName || user.email.split('@')[0];
+    document.getElementById('profileName').textContent = displayName;
+    document.getElementById('emailDisplay').textContent = `Email: ${user.email}`;
+
+    try {
+        const docRef = db.collection("users").doc(uid);
+        const doc = await docRef.get();
+
+        if (doc.exists) {
+            const data = doc.data();
             
-            // Update profile display
-            document.getElementById('profileName').textContent = displayName;
-            document.getElementById('emailDisplay').textContent = `Email: ${user.email}`;
-
-            try {
-                // Load from Firestore
-                const docRef = db.collection("users").doc(uid);
-                const doc = await docRef.get();
-
-                if (doc.exists) {
-                    const data = doc.data();
-                    console.log("📥 Loaded data from Firestore:", data);
-                    
-                    // Load preferences
-                    if (data.preferences) {
-                        currentSelection.theme = data.preferences.theme || "System";
-                        currentSelection.appLanguage = data.preferences.appLanguage || "English";
-                        currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
-                    }
-                    
-                    // Load app tone
-                    if (data.account && data.account.appTone) {
-                        currentSelection.appTone = data.account.appTone;
-                        // Find tone name
-                        const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
-                        currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
-                    }
-                } else {
-                    // Create new user document
-                    await docRef.set({
-                        email: user.email,
-                        displayName: displayName,
-                        preferences: {
-                            theme: currentSelection.theme,
-                            appLanguage: currentSelection.appLanguage,
-                            voiceLanguage: currentSelection.voiceLanguage
-                        },
-                        account: {
-                            appTone: currentSelection.appTone
-                        },
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    console.log("✅ Created new user document");
-                }
-
-                // Apply settings to UI
-                applyTheme(currentSelection.theme);
-                document.documentElement.style.setProperty("--primary-color", currentSelection.appTone);
-                updateAllDisplays(); // ⬅️ THIS IS KEY!
-
-            } catch (error) {
-                console.error('❌ Error loading settings:', error);
+            if (data.preferences) {
+                currentSelection.theme = data.preferences.theme || "System";
+                currentSelection.appLanguage = data.preferences.appLanguage || "English";
+                currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
             }
+            
+            if (data.account) {
+                currentSelection.appTone = data.account.appTone || "#6366f1";
+                const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
+                currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
+            }
+        }
 
-            // Show main content
-            document.getElementById('loadingScreen').classList.add('hidden');
-            document.getElementById('mainContent').classList.remove('hidden');
-        });
+        applyTheme(currentSelection.theme);
+        document.documentElement.style.setProperty("--primary-color", currentSelection.appTone);
+        updateAllDisplays();
+
+    } catch (error) {
+        console.error('❌ Error loading settings:', error);
+    }
+
+    loadingScreen.classList.add('hidden');
+    mainContent.classList.remove('hidden');
+});
 
         // ========== STEP 2: UPDATE DISPLAY VALUES (THIS WAS MISSING!) ==========
         function updateAllDisplays() {
@@ -796,3 +779,4 @@
     </script>
 </body>
 </html>
+
