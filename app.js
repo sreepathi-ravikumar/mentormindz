@@ -1,4 +1,5 @@
-// Firebase config - fill with your project's values
+
+    // Firebase config - fill with your project's values
     const firebaseConfig = {
       apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
       authDomain: "mentormindz-8211a.firebaseapp.com",
@@ -15,6 +16,9 @@
     const avatarDiv = document.querySelector('.avatar');
     const sidebarName = document.querySelector('.sidebar-username');
     const sidebarAvatar = document.querySelector('.sidebar-avatar');
+    const logoutBtn = document.getElementById('logoutBtn');
+ 
+ 
 
     // Helper to get email username before @
     function emailUsername(email) {
@@ -25,18 +29,29 @@
     // Show UI for logged out state
     function showLoggedOutUI() {
       avatarDiv.innerHTML = `
-        <a href="login.html" style="
+        <button id="customLoginBtn" style="
           background:#6366f1; 
           color:white; 
           border:none; 
           padding:6px 14px; 
           border-radius:8px; 
           cursor:pointer; 
-          margin-left:20px;
-          text-decoration:none;
-          display:inline-block;">Login</a>`;
+          margin-left:20px;">Login</button>`;
       sidebarName.textContent = 'Guest';
       sidebarAvatar.innerHTML = '<i class="fa-solid fa-user"></i>';
+      logoutBtn.style.display = 'none';
+
+      // Add event listener to login button that closes sidebar THEN navigates
+      const loginBtn = document.getElementById('customLoginBtn');
+      loginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeSidebar();
+        // Wait for sidebar animation to finish before redirecting
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 300);
+      });
     }
 
     // Show UI for logged in state
@@ -49,7 +64,17 @@
       avatarDiv.innerHTML = `<img src="${photoURL}" alt="User Avatar" style="width:36px;height:36px;border-radius:50%;cursor:pointer;">`;
       sidebarName.textContent = displayName;
       sidebarAvatar.innerHTML = `<img src="${photoURL}" alt="User Avatar" style="width:32px;height:32px;border-radius:50%;">`;
+      logoutBtn.style.display = 'block';
     }
+
+    logoutBtn.addEventListener('click', () => {
+      auth.signOut().then(() => {
+        closeSidebar();
+        showLoggedOutUI();
+      }).catch((error) => {
+        console.error('Logout failed:', error);
+      });
+    });
 
     // Monitor auth state and update UI accordingly
     auth.onAuthStateChanged(user => {
@@ -160,9 +185,6 @@ downloadBtn.addEventListener('click', async () => {
     alert("An error occurred while downloading the video.");
   }
 });
-
-
-
 
 
 
