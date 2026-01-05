@@ -339,6 +339,7 @@
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
             z-index: 1000;
+            touch-action: none;
         }
 
         .settings-overlay.active {
@@ -509,6 +510,10 @@
             color: var(--primary-color);
         }
 
+        .saving-indicator.error i {
+            color: #ff3b30;
+        }
+
         /* ========== RESPONSIVE ========== */
         @media (max-width: 480px) {
             .container {
@@ -645,7 +650,7 @@
     <!-- Saving Indicator -->
     <div class="saving-indicator" id="savingIndicator">
         <i class="fa-solid fa-check-circle"></i>
-        <span>Saved</span>
+        <span id="savingText">Saved</span>
     </div>
 
     <!-- Firebase SDK -->
@@ -657,11 +662,11 @@
         // ==================== FIREBASE CONFIGURATION ====================
         const firebaseConfig = {
             apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
-      authDomain: "mentormindz-8211a.firebaseapp.com",
-      projectId: "mentormindz-8211a",
-      storageBucket: "mentormindz-8211a.firebasestorage.app",
-      messagingSenderId: "913045756560",
-      appId: "1:913045756560:web:65cc21aca54ac1c2739615"
+            authDomain: "mentormindz-8211a.firebaseapp.com",
+            projectId: "mentormindz-8211a",
+            storageBucket: "mentormindz-8211a.firebasestorage.app",
+            messagingSenderId: "913045756560",
+            appId: "1:913045756560:web:65cc21aca54ac1c2739615"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -671,14 +676,11 @@
         // ==================== GLOBAL STATE ====================
         let uid = null;
         let loadingTimeout = null;
-        const SKELETON_DELAY = 250; // Show skeleton only if data takes >250ms
+        let unsubscribeSnapshot = null; // Store listener to prevent memory leaks
+        let isSheetAnimating = false; // Prevent double-clicks during animation
+        const SKELETON_DELAY = 250;
 
-        
-
-
-
-
-    const SETTINGS = {
+        const SETTINGS = {
             appLanguage: {
                 title: "App Language",
                 search: true,
@@ -717,6 +719,9 @@
             appToneName: "Aurora Blue"
         };
 
+        // Store previous state for rollback
+        let previousState = { ...currentSelection };
+
         // ==================== AUTH STATE HANDLER ====================
         auth.onAuthStateChanged(async (user) => {
             if (!user) {
@@ -728,19 +733,17 @@
             uid = user.uid;
             console.log('✅ User authenticated:', uid);
 
-            // Set skeleton timeout - only show if data takes too long
             loadingTimeout = setTimeout(() => {
                 console.log('⏱️ Loading taking longer than expected, skeletons visible');
             }, SKELETON_DELAY);
 
             try {
-                // Load user data from Firestore
                 await loadUserData(user);
             } catch (error) {
                 console.error('❌ Error loading user data:', error);
-                // Show defaults even on error
                 hideAllSkeletons();
                 updateAllDisplays();
+                showNotification('Failed to load settings', true);
             }
         });
 
@@ -750,61 +753,78 @@
             const docRef = db.collection("users").doc(uid);
 
             try {
-                const doc = await docRef.get();
-                const loadTime = Date.now() - startTime;
-                console.log(`📥 Data loaded in ${loadTime}ms`);
-
-                // Clear skeleton timeout if data loaded fast
-                if (loadTime < SKELETON_DELAY) {
-                    clearTimeout(loadingTimeout);
+                // Clear any existing listener
+                if (unsubscribeSnapshot) {
+                    unsubscribeSnapshot();
                 }
 
-                if (doc.exists) {
-                    const data = doc.data();
-                    console.log('📦 Loaded data:', data);
+                // Use onSnapshot for real-time updates
+                unsubscribeSnapshot = docRef.onSnapshot((doc) => {
+                    const loadTime = Date.now() - startTime;
+                    console.log(`📥 Data loaded in ${loadTime}ms`);
 
-                    // Load preferences
-                    if (data.preferences) {
-                        currentSelection.theme = data.preferences.theme || "System";
-                        currentSelection.appLanguage = data.preferences.appLanguage || "English";
-                        currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
+                    if (loadTime < SKELETON_DELAY && loadingTimeout) {
+                        clearTimeout(loadingTimeout);
                     }
 
-                    // Load app tone
-                    if (data.account && data.account.appTone) {
-                        currentSelection.appTone = data.account.appTone;
-                        const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
-                        currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
+                    if (doc.exists) {
+                        const data = doc.data();
+                        console.log('📦 Loaded data:', data);
+
+                        // Load preferences
+                        if (data.preferences) {
+                            currentSelection.theme = data.preferences.theme || "System";
+                            currentSelection.appLanguage = data.preferences.appLanguage || "English";
+                            currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
+                        }
+
+                        // Load app tone
+                        if (data.account && data.account.appTone) {
+                            currentSelection.appTone = data.account.appTone;
+                            const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
+                            currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
+                        }
+
+                        // Store current state as previous
+                        previousState = { ...currentSelection };
+                    } else {
+                        // Initialize new user document
+                        console.log('🆕 Creating new user document...');
+                        const displayName = user.displayName || user.email.split('@')[0];
+                        docRef.set({
+                            email: user.email,
+                            displayName: displayName,
+                            preferences: {
+                                theme: currentSelection.theme,
+                                appLanguage: currentSelection.appLanguage,
+                                voiceLanguage: currentSelection.voiceLanguage
+                            },
+                            account: {
+                                appTone: currentSelection.appTone
+                            },
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }).then(() => {
+                            console.log('✅ User document created');
+                        }).catch(err => {
+                            console.error('❌ Failed to create user document:', err);
+                        });
                     }
-                } else {
-                    // Initialize new user document
-                    console.log('🆕 Creating new user document...');
+
+                    // Apply theme and color
+                    applyTheme(currentSelection.theme);
+                    applyColor(currentSelection.appTone);
+
+                    // Update UI
                     const displayName = user.displayName || user.email.split('@')[0];
-                    await docRef.set({
-                        email: user.email,
-                        displayName: displayName,
-                        preferences: {
-                            theme: currentSelection.theme,
-                            appLanguage: currentSelection.appLanguage,
-                            voiceLanguage: currentSelection.voiceLanguage
-                        },
-                        account: {
-                            appTone: currentSelection.appTone
-                        },
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    console.log('✅ User document created');
-                }
+                    updateElement('profileName', displayName);
+                    updateElement('emailDisplay', `Email: ${user.email}`);
+                    updateAllDisplays();
 
-                // Apply theme and color
-                applyTheme(currentSelection.theme);
-                document.documentElement.style.setProperty("--primary-color", currentSelection.appTone);
-
-                // Update UI
-                const displayName = user.displayName || user.email.split('@')[0];
-                updateElement('profileName', displayName);
-                updateElement('emailDisplay', `Email: ${user.email}`);
-                updateAllDisplays();
+                }, (error) => {
+                    console.error('❌ Firestore snapshot error:', error);
+                    hideAllSkeletons();
+                    showNotification('Failed to sync settings', true);
+                });
 
             } catch (error) {
                 console.error('❌ Firestore error:', error);
@@ -817,7 +837,6 @@
             const element = document.getElementById(elementId);
             if (!element) return;
 
-            // Remove skeleton and add content with fade-in
             element.innerHTML = value;
             element.classList.add('fade-in');
         }
@@ -832,27 +851,52 @@
 
         function hideAllSkeletons() {
             document.querySelectorAll('.skeleton').forEach(el => {
-                el.parentElement.innerHTML = el.parentElement.textContent || 'Loading...';
+                const parent = el.parentElement;
+                if (parent) {
+                    parent.classList.remove('skeleton');
+                    parent.style.background = 'none';
+                }
             });
         }
 
         // ==================== BOTTOM SHEET CONTROLS ====================
         function openSetting(key) {
+            if (isSheetAnimating) return; // Prevent double-click
+            
             currentKey = key;
             document.getElementById("sheetTitle").innerText = SETTINGS[key].title;
             const searchInput = document.getElementById("search");
             searchInput.style.display = SETTINGS[key].search ? "block" : "none";
             searchInput.value = "";
             renderOptions(SETTINGS[key].options);
-            document.getElementById("overlay").classList.add("active");
+            
+            const overlay = document.getElementById("overlay");
+            const sheet = document.getElementById("sheet");
+            
+            overlay.classList.add("active");
+            isSheetAnimating = true;
+            
             requestAnimationFrame(() => {
-                document.getElementById("sheet").classList.add("open");
+                sheet.classList.add("open");
+                setTimeout(() => {
+                    isSheetAnimating = false;
+                }, 300); // Match CSS transition duration
             });
         }
 
         function closeSheet() {
-            document.getElementById("sheet").classList.remove("open");
-            document.getElementById("overlay").classList.remove("active");
+            if (isSheetAnimating) return; // Prevent interruption
+            
+            const sheet = document.getElementById("sheet");
+            const overlay = document.getElementById("overlay");
+            
+            isSheetAnimating = true;
+            sheet.classList.remove("open");
+            
+            setTimeout(() => {
+                overlay.classList.remove("active");
+                isSheetAnimating = false;
+            }, 300); // Match CSS transition duration
         }
 
         // ==================== RENDER OPTIONS ====================
@@ -901,17 +945,20 @@
         async function applySetting(value, name) {
             console.log(`🎯 Setting ${currentKey} to:`, value);
 
-            // 1️⃣ Update local state immediately
+            // Store previous state for rollback
+            previousState = { ...currentSelection };
+
+            // 1️⃣ Update local state immediately (optimistic)
             currentSelection[currentKey] = value;
             if (currentKey === "appTone") {
                 currentSelection.appToneName = name;
             }
 
-            // 2️⃣ Apply visual changes immediately (optimistic)
+            // 2️⃣ Apply visual changes immediately
             if (currentKey === "theme") {
                 applyTheme(value);
             } else if (currentKey === "appTone") {
-                document.documentElement.style.setProperty("--primary-color", value);
+                applyColor(value);
             }
 
             // 3️⃣ Update UI immediately
@@ -928,17 +975,16 @@
         async function saveToFirestore(key, value) {
             if (!uid) {
                 console.error('❌ No UID available');
+                showNotification('Not authenticated', true);
                 return;
             }
 
-            // Show saving indicator
-            showSavingIndicator();
+            showNotification('Saving...', false);
 
             try {
                 const docRef = db.collection("users").doc(uid);
 
                 if (key === "appTone") {
-                    // Save app tone to account section
                     await docRef.set({
                         account: {
                             appTone: value
@@ -947,56 +993,98 @@
                     }, { merge: true });
                     console.log('✅ App tone saved to Firestore');
                 } else {
-                    // Save other preferences
                     await docRef.set({
                         preferences: {
-                            theme: currentSelection.theme,
-                            appLanguage: currentSelection.appLanguage,
-                            voiceLanguage: currentSelection.voiceLanguage
+                            [key]: value
                         },
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
-                    console.log('✅ Preferences saved to Firestore');
+                    console.log(`✅ ${key} saved to Firestore`);
                 }
 
-                // Show success indicator briefly
-                setTimeout(hideSavingIndicator, 1500);
+                showNotification('Saved', false);
 
             } catch (error) {
                 console.error('❌ Failed to save to Firestore:', error);
-                // Optionally revert optimistic update here
-                alert('Failed to save setting. Please try again.');
-                hideSavingIndicator();
+                
+                // Rollback optimistic update
+                currentSelection = { ...previousState };
+                updateAllDisplays();
+                
+                if (key === "theme") {
+                    applyTheme(previousState.theme);
+                } else if (key === "appTone") {
+                    applyColor(previousState.appTone);
+                }
+                
+                showNotification('Failed to save', true);
             }
         }
 
-        // ==================== SAVING INDICATOR ====================
-        function showSavingIndicator() {
+        // ==================== NOTIFICATION SYSTEM ====================
+        function showNotification(message, isError = false) {
             const indicator = document.getElementById('savingIndicator');
+            const text = document.getElementById('savingText');
+            const icon = indicator.querySelector('i');
+            
+            text.textContent = message;
+            
+            if (isError) {
+                indicator.classList.add('error');
+                icon.className = 'fa-solid fa-exclamation-circle';
+            } else {
+                indicator.classList.remove('error');
+                icon.className = 'fa-solid fa-check-circle';
+            }
+            
             indicator.classList.add('show');
+            
+            if (message !== 'Saving...') {
+                setTimeout(() => {
+                    indicator.classList.remove('show');
+                }, 2000);
+            }
         }
 
-        function hideSavingIndicator() {
-            const indicator = document.getElementById('savingIndicator');
-            indicator.classList.remove('show');
-        }
-
-        // ==================== THEME CONTROL ====================
+        // ==================== THEME & COLOR APPLICATION ====================
         function applyTheme(value) {
             if (value === "Dark") {
                 document.body.classList.add("dark");
             } else if (value === "Light") {
                 document.body.classList.remove("dark");
             } else {
-                // System theme
                 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                 document.body.classList.toggle("dark", prefersDark);
             }
             console.log(`🎨 Theme applied: ${value}`);
         }
 
+        function applyColor(color) {
+            document.documentElement.style.setProperty("--primary-color", color);
+            
+            // Adjust for dark mode if needed
+            if (document.body.classList.contains('dark')) {
+                const lightColor = adjustColorBrightness(color, 30);
+                document.documentElement.style.setProperty("--primary-color", lightColor);
+            }
+        }
+
+        // Helper function to adjust color brightness
+        function adjustColorBrightness(hex, percent) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                (B < 255 ? B < 1 ? 0 : B : 255))
+                .toString(16).slice(1);
+        }
+
         // Listen for system theme changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        darkModeQuery.addEventListener('change', (e) => {
             if (currentSelection.theme === "System") {
                 document.body.classList.toggle("dark", e.matches);
                 console.log('🌓 System theme changed:', e.matches ? 'dark' : 'light');
@@ -1016,7 +1104,7 @@
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                window.location.href = '/home.html';
+                window.location.href = 'home.html';
             }
         }
 
@@ -1024,14 +1112,31 @@
             if (!confirm("Are you sure you want to logout?")) return;
 
             try {
+                // Unsubscribe from listeners before logout
+                if (unsubscribeSnapshot) {
+                    unsubscribeSnapshot();
+                    unsubscribeSnapshot = null;
+                }
+                
                 await auth.signOut();
                 console.log('👋 User logged out');
-                window.location.href = '/login.html';
+                window.location.href = 'login.html';
             } catch (error) {
                 console.error('❌ Logout error:', error);
-                alert('Failed to logout. Please try again.');
+                showNotification('Failed to logout', true);
             }
         }
+
+        // ==================== CLEANUP ====================
+        window.addEventListener('beforeunload', () => {
+            // Clean up listeners when page unloads
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+            }
+            if (loadingTimeout) {
+                clearTimeout(loadingTimeout);
+            }
+        });
 
         // ==================== ERROR HANDLING ====================
         window.addEventListener('error', (e) => {
@@ -1041,7 +1146,11 @@
         window.addEventListener('unhandledrejection', (e) => {
             console.error('💥 Unhandled promise rejection:', e.reason);
         });
+
+        // ==================== PREVENT SHEET CLOSING ON CONTENT TOUCH ====================
+        document.getElementById('sheet').addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent closing when clicking inside sheet
+        });
     </script>
 </body>
 </html>
-
