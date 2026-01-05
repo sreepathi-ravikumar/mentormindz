@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - MentorMindz</title>
+    <title>Settings - MentorMindz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
@@ -20,6 +20,8 @@
             --card: #ffffff;
             --border: #e5e7eb;
             --overlay-bg: rgba(0, 0, 0, 0.3);
+            --skeleton-base: #e5e7eb;
+            --skeleton-shimmer: #f3f4f6;
         }
 
         body.dark {
@@ -30,10 +32,12 @@
             --card: #1f2937;
             --border: #374151;
             --overlay-bg: rgba(255, 255, 255, 0.08);
+            --skeleton-base: #374151;
+            --skeleton-shimmer: #4b5563;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text-color);
             -webkit-font-smoothing: antialiased;
@@ -41,6 +45,7 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
+        /* ========== BACK BUTTON ========== */
         .back-button {
             position: fixed;
             top: 20px;
@@ -54,10 +59,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
             z-index: 100;
-            border: none;
         }
 
         .back-button:hover {
@@ -74,6 +78,7 @@
             font-size: 18px;
         }
 
+        /* ========== LAYOUT ========== */
         .container {
             max-width: 420px;
             margin: 0 auto;
@@ -90,6 +95,7 @@
             color: var(--icon-color);
             margin-bottom: 8px;
             padding-left: 4px;
+            font-weight: 500;
         }
 
         .card {
@@ -102,6 +108,7 @@
             margin-bottom: 12px;
         }
 
+        /* ========== PROFILE CARD ========== */
         .profile-card {
             display: flex;
             align-items: center;
@@ -136,6 +143,7 @@
 
         .profile-info {
             flex: 1;
+            min-width: 0;
         }
 
         .profile-name {
@@ -143,6 +151,9 @@
             font-weight: 600;
             color: var(--text-color);
             margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .profile-role {
@@ -162,12 +173,14 @@
             padding: 8px;
             margin: -8px;
             transition: color 0.15s ease;
+            flex-shrink: 0;
         }
 
         .edit-button:hover {
             color: var(--text-color);
         }
 
+        /* ========== MENU ITEMS ========== */
         .item {
             padding: 16px;
             border-bottom: 1px solid var(--border);
@@ -177,22 +190,7 @@
             align-items: center;
             font-size: 16px;
             transition: background-color 0.15s ease;
-        }
-
-        .item-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-        }
-
-        .email {
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            color: var(--icon-color);
-            word-break: break-all;
+            min-height: 56px;
         }
 
         .item:last-child {
@@ -207,20 +205,98 @@
             opacity: 0.7;
         }
 
-        .item::after {
-            content: '›';
-            color: var(--icon-color);
-            font-size: 18px;
-            margin-left: auto;
+        .item-label {
+            color: var(--text-color);
+            font-weight: 400;
         }
 
-        .current-selection {
+        .item-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .current-value {
             color: var(--icon-color);
             font-size: 14px;
-            margin-left: auto;
-            margin-right: 8px;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
+        .item-arrow {
+            color: var(--icon-color);
+            font-size: 18px;
+        }
+
+        .email-item {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: var(--icon-color);
+            word-break: break-all;
+            cursor: default;
+            min-height: 56px;
+        }
+
+        /* ========== SKELETON LOADING ========== */
+        .skeleton {
+            background: var(--skeleton-base);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .skeleton::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                var(--skeleton-shimmer),
+                transparent
+            );
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .skeleton-text {
+            height: 14px;
+            width: 80px;
+        }
+
+        .skeleton-name {
+            height: 17px;
+            width: 120px;
+        }
+
+        .skeleton-email {
+            height: 14px;
+            width: 200px;
+        }
+
+        /* Smooth fade in when data loads */
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ========== LOGOUT BUTTON ========== */
         .logout-button {
             background-color: var(--card);
             border-radius: 14px;
@@ -254,17 +330,20 @@
             width: 100%;
         }
 
+        /* ========== BOTTOM SHEET ========== */
         .settings-overlay {
             position: fixed;
             inset: 0;
             background: var(--overlay-bg);
-            display: none;
-            z-index: 10;
-            transition: opacity 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 1000;
         }
 
         .settings-overlay.active {
-            display: block;
+            opacity: 1;
+            visibility: visible;
         }
 
         .settings-sheet {
@@ -278,10 +357,11 @@
             border-radius: 20px 20px 0 0;
             padding: 16px;
             transform: translateY(100%);
-            transition: transform 0.3s ease;
-            z-index: 11;
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            z-index: 1001;
             max-height: 70vh;
             overflow-y: auto;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
         }
 
         .settings-sheet.open {
@@ -291,9 +371,10 @@
         .drag-bar {
             width: 40px;
             height: 4px;
-            background: #aaa;
+            background: var(--icon-color);
             border-radius: 10px;
-            margin: 0 auto 12px;
+            margin: 0 auto 16px;
+            opacity: 0.3;
         }
 
         .sheet-title {
@@ -305,7 +386,7 @@
 
         .search-input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 12px 16px;
             border-radius: 10px;
             border: 1px solid var(--border);
             margin-bottom: 12px;
@@ -313,6 +394,7 @@
             background: var(--bg);
             color: var(--text-color);
             outline: none;
+            transition: border-color 0.2s ease;
         }
 
         .search-input:focus {
@@ -369,17 +451,19 @@
         }
 
         .color-preview {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             border: 2px solid var(--border);
             flex-shrink: 0;
             position: relative;
+            transition: all 0.2s ease;
         }
 
         .color-preview.selected {
             border-color: var(--primary-color);
             border-width: 3px;
+            box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--primary-color);
         }
 
         .color-preview.selected::after {
@@ -389,54 +473,76 @@
             left: 50%;
             transform: translate(-50%, -50%);
             color: white;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
-            text-shadow: 0 0 3px rgba(0,0,0,0.5);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--icon-color);
+        /* ========== SAVING INDICATOR ========== */
+        .saving-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 2000;
         }
 
-        .spinner {
-            border: 3px solid var(--border);
-            border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
+        .saving-indicator.show {
+            opacity: 1;
+            visibility: visible;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .saving-indicator i {
+            color: var(--primary-color);
         }
 
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 480px) {
+            .container {
+                padding: 70px 16px 20px;
+            }
+            
+            .current-value {
+                max-width: 100px;
+            }
+        }
+
+        /* ========== HIDDEN ========== */
         .hidden {
-            display: none;
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <button class="back-button" onclick="goBack()">
+    <!-- Back Button -->
+    <button class="back-button" onclick="goBack()" aria-label="Go back">
         <i class="fa-solid fa-arrow-left"></i>
     </button>
 
-    <div id="loadingScreen" class="loading">
-        <div class="spinner"></div>
-        <div>Loading profile...</div>
-    </div>
-
-    <div id="mainContent" class="container hidden">
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Profile Section -->
         <div class="section">
             <h1 class="section-title">Profile</h1>
             <div class="card profile-card">
                 <div class="avatar"></div>
                 <div class="profile-info">
-                    <div class="profile-name" id="profileName">User</div>
+                    <div class="profile-name" id="profileName">
+                        <span class="skeleton skeleton-name"></span>
+                    </div>
                     <div class="profile-role">MentorMindz Innovator</div>
                 </div>
                 <a href="#" class="edit-button" onclick="event.preventDefault()">
@@ -445,45 +551,81 @@
             </div>
         </div>
 
+        <!-- Preferences Section -->
         <div class="section">
             <div class="section-title">Preferences</div>
             <div class="card">
                 <div class="item" onclick="openSetting('theme')">
-                    <span>Theme</span>
-                    <span class="current-selection" id="themeDisplay">System</span>
+                    <span class="item-label">Theme</span>
+                    <div class="item-right">
+                        <span class="current-value" id="themeDisplay">
+                            <span class="skeleton skeleton-text"></span>
+                        </span>
+                        <span class="item-arrow">›</span>
+                    </div>
                 </div>
                 <div class="item" onclick="openSetting('appLanguage')">
-                    <span>App Language</span>
-                    <span class="current-selection" id="appLanguageDisplay">English</span>
+                    <span class="item-label">App Language</span>
+                    <div class="item-right">
+                        <span class="current-value" id="appLanguageDisplay">
+                            <span class="skeleton skeleton-text"></span>
+                        </span>
+                        <span class="item-arrow">›</span>
+                    </div>
                 </div>
                 <div class="item" onclick="openSetting('voiceLanguage')">
-                    <span>Voice Language</span>
-                    <span class="current-selection" id="voiceLanguageDisplay">English Voice</span>
+                    <span class="item-label">Voice Language</span>
+                    <div class="item-right">
+                        <span class="current-value" id="voiceLanguageDisplay">
+                            <span class="skeleton skeleton-text"></span>
+                        </span>
+                        <span class="item-arrow">›</span>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Account Section -->
         <div class="section">
             <div class="section-title">Account</div>
             <div class="card">
-                <div class="email" id="emailDisplay">Email: Loading...</div>
+                <div class="email-item" id="emailDisplay">
+                    <span class="skeleton skeleton-email"></span>
+                </div>
             </div>
             <div class="card">
                 <div class="item" onclick="openSetting('appTone')">
-                    <span>App Tone</span>
-                    <span class="current-selection" id="appToneDisplay">Aurora Blue</span>
+                    <span class="item-label">App Tone</span>
+                    <div class="item-right">
+                        <span class="current-value" id="appToneDisplay">
+                            <span class="skeleton skeleton-text"></span>
+                        </span>
+                        <span class="item-arrow">›</span>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Legal Section -->
         <div class="section">
             <div class="section-title">Legal</div>
             <div class="card">
-                <div class="item" onclick="alert('Terms & Conditions Page')">Terms & Conditions</div>
-                <div class="item" onclick="alert('Privacy Policy Page')">Privacy Policy</div>
+                <div class="item" onclick="openLegal('terms')">
+                    <span class="item-label">Terms & Conditions</span>
+                    <div class="item-right">
+                        <span class="item-arrow">›</span>
+                    </div>
+                </div>
+                <div class="item" onclick="openLegal('privacy')">
+                    <span class="item-label">Privacy Policy</span>
+                    <div class="item-right">
+                        <span class="item-arrow">›</span>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <!-- Logout Button -->
         <div class="logout-button" onclick="handleLogout()">
             <button class="logout-text">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
@@ -491,8 +633,8 @@
         </div>
     </div>
 
+    <!-- Settings Bottom Sheet -->
     <div class="settings-overlay" id="overlay" onclick="closeSheet()"></div>
-
     <div class="settings-sheet" id="sheet">
         <div class="drag-bar"></div>
         <div class="sheet-title" id="sheetTitle"></div>
@@ -500,32 +642,47 @@
         <div id="options"></div>
     </div>
 
+    <!-- Saving Indicator -->
+    <div class="saving-indicator" id="savingIndicator">
+        <i class="fa-solid fa-check-circle"></i>
+        <span>Saved</span>
+    </div>
+
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script>
-        // ========== FIREBASE CONFIG - REPLACE WITH YOUR VALUES ==========
+        // ==================== FIREBASE CONFIGURATION ====================
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
+      authDomain: "mentormindz-8211a.firebaseapp.com",
+      projectId: "mentormindz-8211a",
+      storageBucket: "mentormindz-8211a.firebasestorage.app",
+      messagingSenderId: "913045756560",
+      appId: "1:913045756560:web:65cc21aca54ac1c2739615"
         };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        let uid = null;
 
-        // ========== SETTINGS ==========
-        const SETTINGS = {
+        // ==================== GLOBAL STATE ====================
+        let uid = null;
+        let loadingTimeout = null;
+        const SKELETON_DELAY = 250; // Show skeleton only if data takes >250ms
+
+        
+
+
+
+
+    const SETTINGS = {
             appLanguage: {
                 title: "App Language",
                 search: true,
-                options: ["English", "Tamil", "Hindi", "French", "German", "Spanish"]
+                options: ["English", "Tamil", "Hindi", "French", "German", "Spanish", "Japanese", "Korean"]
             },
             voiceLanguage: {
                 title: "Voice Language",
@@ -560,70 +717,126 @@
             appToneName: "Aurora Blue"
         };
 
-        // ========== STEP 1: LOAD DATA FROM FIREBASE ==========
-        // ✅ NEW CODE - NO LOGIN REDIRECT ✅
-auth.onAuthStateChanged(async (user) => {
-    const loadingScreen = document.getElementById('loadingScreen');
-    const mainContent = document.getElementById('mainContent');
-
-    // If no user, just show error message (don't redirect)
-    if (!user) {
-        loadingScreen.innerHTML = '<div style="color: red;">⚠️ Please login first</div>';
-        console.log('No user found');
-        return;
-    }
-
-    uid = user.uid;
-    
-    // Rest of your code stays the same...
-    const displayName = user.displayName || user.email.split('@')[0];
-    document.getElementById('profileName').textContent = displayName;
-    document.getElementById('emailDisplay').textContent = `Email: ${user.email}`;
-
-    try {
-        const docRef = db.collection("users").doc(uid);
-        const doc = await docRef.get();
-
-        if (doc.exists) {
-            const data = doc.data();
-            
-            if (data.preferences) {
-                currentSelection.theme = data.preferences.theme || "System";
-                currentSelection.appLanguage = data.preferences.appLanguage || "English";
-                currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
+        // ==================== AUTH STATE HANDLER ====================
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                console.warn('⚠️ No user authenticated, redirecting...');
+                window.location.href = '/login.html';
+                return;
             }
-            
-            if (data.account) {
-                currentSelection.appTone = data.account.appTone || "#6366f1";
-                const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
-                currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
+
+            uid = user.uid;
+            console.log('✅ User authenticated:', uid);
+
+            // Set skeleton timeout - only show if data takes too long
+            loadingTimeout = setTimeout(() => {
+                console.log('⏱️ Loading taking longer than expected, skeletons visible');
+            }, SKELETON_DELAY);
+
+            try {
+                // Load user data from Firestore
+                await loadUserData(user);
+            } catch (error) {
+                console.error('❌ Error loading user data:', error);
+                // Show defaults even on error
+                hideAllSkeletons();
+                updateAllDisplays();
+            }
+        });
+
+        // ==================== LOAD USER DATA ====================
+        async function loadUserData(user) {
+            const startTime = Date.now();
+            const docRef = db.collection("users").doc(uid);
+
+            try {
+                const doc = await docRef.get();
+                const loadTime = Date.now() - startTime;
+                console.log(`📥 Data loaded in ${loadTime}ms`);
+
+                // Clear skeleton timeout if data loaded fast
+                if (loadTime < SKELETON_DELAY) {
+                    clearTimeout(loadingTimeout);
+                }
+
+                if (doc.exists) {
+                    const data = doc.data();
+                    console.log('📦 Loaded data:', data);
+
+                    // Load preferences
+                    if (data.preferences) {
+                        currentSelection.theme = data.preferences.theme || "System";
+                        currentSelection.appLanguage = data.preferences.appLanguage || "English";
+                        currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English Voice";
+                    }
+
+                    // Load app tone
+                    if (data.account && data.account.appTone) {
+                        currentSelection.appTone = data.account.appTone;
+                        const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
+                        currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
+                    }
+                } else {
+                    // Initialize new user document
+                    console.log('🆕 Creating new user document...');
+                    const displayName = user.displayName || user.email.split('@')[0];
+                    await docRef.set({
+                        email: user.email,
+                        displayName: displayName,
+                        preferences: {
+                            theme: currentSelection.theme,
+                            appLanguage: currentSelection.appLanguage,
+                            voiceLanguage: currentSelection.voiceLanguage
+                        },
+                        account: {
+                            appTone: currentSelection.appTone
+                        },
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log('✅ User document created');
+                }
+
+                // Apply theme and color
+                applyTheme(currentSelection.theme);
+                document.documentElement.style.setProperty("--primary-color", currentSelection.appTone);
+
+                // Update UI
+                const displayName = user.displayName || user.email.split('@')[0];
+                updateElement('profileName', displayName);
+                updateElement('emailDisplay', `Email: ${user.email}`);
+                updateAllDisplays();
+
+            } catch (error) {
+                console.error('❌ Firestore error:', error);
+                throw error;
             }
         }
 
-        applyTheme(currentSelection.theme);
-        document.documentElement.style.setProperty("--primary-color", currentSelection.appTone);
-        updateAllDisplays();
+        // ==================== UPDATE DISPLAY ====================
+        function updateElement(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
 
-    } catch (error) {
-        console.error('❌ Error loading settings:', error);
-    }
+            // Remove skeleton and add content with fade-in
+            element.innerHTML = value;
+            element.classList.add('fade-in');
+        }
 
-    loadingScreen.classList.add('hidden');
-    mainContent.classList.remove('hidden');
-});
-
-        // ========== STEP 2: UPDATE DISPLAY VALUES (THIS WAS MISSING!) ==========
         function updateAllDisplays() {
-            document.getElementById('themeDisplay').textContent = currentSelection.theme;
-            document.getElementById('appLanguageDisplay').textContent = currentSelection.appLanguage;
-            document.getElementById('voiceLanguageDisplay').textContent = currentSelection.voiceLanguage;
-            document.getElementById('appToneDisplay').textContent = currentSelection.appToneName;
-            console.log("🔄 Updated all displays:", currentSelection);
+            updateElement('themeDisplay', currentSelection.theme);
+            updateElement('appLanguageDisplay', currentSelection.appLanguage);
+            updateElement('voiceLanguageDisplay', currentSelection.voiceLanguage);
+            updateElement('appToneDisplay', currentSelection.appToneName);
+            console.log('🔄 All displays updated:', currentSelection);
         }
 
-        
+        function hideAllSkeletons() {
+            document.querySelectorAll('.skeleton').forEach(el => {
+                el.parentElement.innerHTML = el.parentElement.textContent || 'Loading...';
+            });
+        }
 
-        // ========== STEP 3: OPEN SETTINGS SHEET ==========
+        // ==================== BOTTOM SHEET CONTROLS ====================
         function openSetting(key) {
             currentKey = key;
             document.getElementById("sheetTitle").innerText = SETTINGS[key].title;
@@ -632,35 +845,32 @@ auth.onAuthStateChanged(async (user) => {
             searchInput.value = "";
             renderOptions(SETTINGS[key].options);
             document.getElementById("overlay").classList.add("active");
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 document.getElementById("sheet").classList.add("open");
-            }, 10);
+            });
         }
 
         function closeSheet() {
             document.getElementById("sheet").classList.remove("open");
-            setTimeout(() => {
-                document.getElementById("overlay").classList.remove("active");
-            }, 300);
+            document.getElementById("overlay").classList.remove("active");
         }
 
-        // ========== STEP 4: RENDER OPTIONS WITH SELECTION ==========
+        // ==================== RENDER OPTIONS ====================
         function renderOptions(list) {
             const box = document.getElementById("options");
             box.innerHTML = "";
-            
+
             list.forEach(opt => {
                 const div = document.createElement("div");
                 div.className = "option";
-                
+
                 const value = opt.value || opt;
                 const name = opt.name || opt;
-                
-                // Check if this option is currently selected
-                const isSelected = (currentKey === "appTone") 
+
+                const isSelected = (currentKey === "appTone")
                     ? currentSelection.appTone === value
                     : currentSelection[currentKey] === value;
-                
+
                 if (currentKey === "appTone") {
                     const colorPreview = document.createElement("div");
                     colorPreview.className = "color-preview" + (isSelected ? " selected" : "");
@@ -673,7 +883,7 @@ auth.onAuthStateChanged(async (user) => {
                     div.innerHTML = `<span>${name}</span>`;
                     div.appendChild(radio);
                 }
-                
+
                 div.onclick = () => applySetting(value, name);
                 box.appendChild(div);
             });
@@ -687,38 +897,58 @@ auth.onAuthStateChanged(async (user) => {
             renderOptions(filtered);
         }
 
-        // ========== STEP 5: APPLY AND SAVE SETTING ==========
+        // ==================== APPLY SETTING (OPTIMISTIC UPDATE) ====================
         async function applySetting(value, name) {
-            console.log(`🔧 Applying ${currentKey}:`, value);
-            
-            // Update local state
+            console.log(`🎯 Setting ${currentKey} to:`, value);
+
+            // 1️⃣ Update local state immediately
             currentSelection[currentKey] = value;
             if (currentKey === "appTone") {
                 currentSelection.appToneName = name;
             }
-            
-            // Apply visual changes immediately
+
+            // 2️⃣ Apply visual changes immediately (optimistic)
             if (currentKey === "theme") {
                 applyTheme(value);
             } else if (currentKey === "appTone") {
                 document.documentElement.style.setProperty("--primary-color", value);
             }
-            
-            // Update display immediately ⬅️ THIS WAS THE KEY FIX!
+
+            // 3️⃣ Update UI immediately
             updateAllDisplays();
-            
-            // Save to Firebase
+
+            // 4️⃣ Close sheet
+            closeSheet();
+
+            // 5️⃣ Save to Firestore in background
+            saveToFirestore(currentKey, value);
+        }
+
+        // ==================== SAVE TO FIRESTORE ====================
+        async function saveToFirestore(key, value) {
+            if (!uid) {
+                console.error('❌ No UID available');
+                return;
+            }
+
+            // Show saving indicator
+            showSavingIndicator();
+
             try {
-                if (currentKey === "appTone") {
-                    await db.collection("users").doc(uid).set({
+                const docRef = db.collection("users").doc(uid);
+
+                if (key === "appTone") {
+                    // Save app tone to account section
+                    await docRef.set({
                         account: {
                             appTone: value
                         },
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
-                    console.log("✅ App tone saved to Firebase");
+                    console.log('✅ App tone saved to Firestore');
                 } else {
-                    await db.collection("users").doc(uid).set({
+                    // Save other preferences
+                    await docRef.set({
                         preferences: {
                             theme: currentSelection.theme,
                             appLanguage: currentSelection.appLanguage,
@@ -726,57 +956,91 @@ auth.onAuthStateChanged(async (user) => {
                         },
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
-                    console.log("✅ Preferences saved to Firebase");
+                    console.log('✅ Preferences saved to Firestore');
                 }
+
+                // Show success indicator briefly
+                setTimeout(hideSavingIndicator, 1500);
+
             } catch (error) {
-                console.error('❌ Error saving to Firebase:', error);
+                console.error('❌ Failed to save to Firestore:', error);
+                // Optionally revert optimistic update here
                 alert('Failed to save setting. Please try again.');
+                hideSavingIndicator();
             }
-            
-            closeSheet();
         }
 
-        // ========== THEME APPLY ==========
+        // ==================== SAVING INDICATOR ====================
+        function showSavingIndicator() {
+            const indicator = document.getElementById('savingIndicator');
+            indicator.classList.add('show');
+        }
+
+        function hideSavingIndicator() {
+            const indicator = document.getElementById('savingIndicator');
+            indicator.classList.remove('show');
+        }
+
+        // ==================== THEME CONTROL ====================
         function applyTheme(value) {
             if (value === "Dark") {
                 document.body.classList.add("dark");
             } else if (value === "Light") {
                 document.body.classList.remove("dark");
             } else {
+                // System theme
                 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                 document.body.classList.toggle("dark", prefersDark);
             }
+            console.log(`🎨 Theme applied: ${value}`);
         }
 
-        // ========== LOGOUT ==========
-        async function handleLogout() {
-            if (confirm("Are you sure you want to logout?")) {
-                try {
-                    await auth.signOut();
-                    window.location.href = 'home.html';
-                } catch (error) {
-                    console.error('❌ Logout error:', error);
-                    alert('Failed to logout');
-                }
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (currentSelection.theme === "System") {
+                document.body.classList.toggle("dark", e.matches);
+                console.log('🌓 System theme changed:', e.matches ? 'dark' : 'light');
             }
+        });
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function openLegal(type) {
+            const urls = {
+                terms: 'https://mentormindz.com/terms',
+                privacy: 'https://mentormindz.com/privacy'
+            };
+            window.open(urls[type], '_blank');
         }
 
-        // ========== BACK BUTTON ==========
         function goBack() {
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                window.location.href = 'home.html';
+                window.location.href = '/dashboard.html';
             }
         }
 
-        // ========== SYSTEM THEME DETECTION ==========
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-            if (currentSelection.theme === "System") {
-                document.body.classList.toggle("dark", e.matches);
+        async function handleLogout() {
+            if (!confirm("Are you sure you want to logout?")) return;
+
+            try {
+                await auth.signOut();
+                console.log('👋 User logged out');
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('❌ Logout error:', error);
+                alert('Failed to logout. Please try again.');
             }
+        }
+
+        // ==================== ERROR HANDLING ====================
+        window.addEventListener('error', (e) => {
+            console.error('💥 Global error:', e.error);
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('💥 Unhandled promise rejection:', e.reason);
         });
     </script>
 </body>
 </html>
-
