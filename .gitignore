@@ -1,0 +1,133 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.vercel/
+.netlify/
+
+# Vite specific
+.vite/
+dist-ssr/
+vite.config.ts.timestamp-*
+
+# React / Vite env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Testing
+coverage/
+*.lcov
+.jest/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+types/generated/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs
+*.log
+
+# Optional npm cache
+.npm
+
+# Optional ESLint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Storybook
+storybook-static/
+
+# Temporary folders
+tmp/
+temp/
+
+# Webpack
+.webpack/
+
+# Parcel
+.cache/
+.parcel-cache/
+
+# Rollup
+.rollup.cache/
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# VSCode test extensions
+.vscode-test
+
+# Lock files (keep only one)
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml
+
+# Editor files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+                                         
+# Service worker (if generated)
+public/sw.js
+public/workbox-*.js
