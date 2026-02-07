@@ -1,2 +1,0 @@
-# mentormindz
-ai teacher appilication

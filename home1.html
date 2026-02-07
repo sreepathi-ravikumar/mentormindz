@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MentorMindz v1</title>
+  <!-- Basic Meta Tags -->
+  <meta name="description" content="MentorMindz - A platform to gain knowledge through interactive learning, videos, voice interaction, and intelligent summaries.">
+  <meta name="keywords" content="MentorMindz,Mentormind,Mentorminds, Education, AI learning, Knowledge, Video AI, Interactive Learning, Voice Search, Student Platform, Learn AI">
+  <meta name="author" content="MentorMindz Team">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mentormindz.pages.dev/
+  ">
+  <meta property="og:title" content="MentorMindz - Learn Smarter with AI">
+  <meta property="og:description" content="Empower your learning with AI-powered video search, summaries, and voice-based interactions on MentorMindz.">
+  <meta property="og:image" content="logo_1.jpg"> 
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://mentormindz.pages.dev/
+  ">
+  <meta name="twitter:title" content="MentorMindz - Learn Smarter with AI">
+  <meta name="twitter:description" content="AI-powered learning platform with smart search, video explanation, and instant summaries.">
+  <meta name="twitter:image" content="logo_1.jpg">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://mentormindz.pages.dev/home
+  ">
+
+  <!-- Bootstrap CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <!-- Bootstrap Icons CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <link rel="icon" type="image" href="logo_1.jpg">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style1.css"/>
+  <style>
+    /* Your styles */
+
+    #summary-btn {
+      background-color: gray;
+      color: white;
+      margin-top: 10px;
+      align-self: flex-start;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      transition: all 0.3s ease;
+      float: left;
+    }
+    #summary-btn:hover {
+      opacity: 0.9;
+    }
+    .summary-style {
+      display: none;
+      margin-top: 10px;
+      text-align: left;
+    }
+    .loading {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid white;
+      border-top: 2px solid transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    /* Mic active */
+    .listening {
+      color: red;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    #summary-output {
+      max-width: 500px;
+      max-height: 220px;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      overflow-x: hidden;
+      word-wrap: break-word;
+      line-height: 1.6;
+      scroll-behavior: smooth;
+      transition: box-shadow 0.3s ease;
+      margin-top:55px;
+      display: block;
+      
+    }
+
+    #summary-output::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #summary-output::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #summary-output::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      transition: background 0.3s ease;
+    }
+
+    #summary-output:hover::-webkit-scrollbar-thumb {
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    #summary-output {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,0,0,0.2) transparent;
+    }
+
+    #summary-output:hover {
+      scrollbar-color: rgba(0,0,0,0.4) transparent;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <!-- Top Nav -->
+  <nav class="d-flex justify-content-between align-items-center p-3">
+    <!-- <button class="btn btn-outline-dark" onclick="window.open('https://forms.gle/G6iipGGaYryeWugS8')">Feedback</button> -->
+    <a class="btn btn-outline-dark" href="feedback.html">Feedback</a>
+    <div class="logo">
+      <img src="logo.jpg" alt="MentorMindz" class="logo-img"/>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="d-flex flex-column align-items-center text-center">
+    <div class="image-box mt-3">
+      <video id="myVideo"  autoplay loop muted preload="" width="100%" height="100%">
+  <source id="videoSource" src="" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+      
+      <button id="summary-btn">Hide Note</button>
+      <div class="selecter" style="float: right;">
+        <label style="margin-right:10px;"><input type="radio" id="solveMode" name="mode" value="solve" checked style=" accent-color:black;">Solve</label>
+        <label style="margin-right:10px;"><input type="radio" id="easyMode" name="mode" value="detail" checked style=" accent-color:black;">Detail</label>
+        <label><input type="radio" id="detailedMode" name="mode" value="easy" checked style="accent-color:blacK;">Easy</label>
+      </div>
+      <div id="summary-output" class="summary-style"></div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-area mt-4">
+      <div class="input-group shadow-lg rounded-pill overflow-hidden search-bar">
+        <span class="input-group-text bg-white border-0">
+          <i class="bi bi-search"></i>
+        </span>
+        <input id="question-input" type="text" class="form-control border-0" placeholder="Gain Your Knowledge..." autofocus />
+        <button id="mic-btn" class="btn border-0 bg-white">
+          <i id="mic-icon" class="bi bi-mic-fill"></i>
+        </button>
+        <button id="submit-btn" class="btn bg-danger text-white rounded-circle">
+          <i class="bi bi-arrow-up"></i>
+        </button>
+      </div>
+      <a href="index.html #content" class="upload-link mt-2 d-block">About This</a>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer text-center mt-5">
+    <a href="termsOfService.html" class="footer-link">Terms</a> | 
+    <a href="privacyPolicy.html" class="footer-link">Privacy Policy</a>
+  </footer>
+
+  <!-- JavaScript -->
+
+  <script type="text/javascript" src="script1.js"></script>
+
+</body>
+
+</html>
