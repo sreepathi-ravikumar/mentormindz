@@ -61,7 +61,7 @@
     mediaSource.addEventListener("sourceopen", () => {
         // CRITICAL FIX: Declare BOTH Video (avc1) and Audio (mp4a) codecs
         // This must match the FFmpeg output exactly
-        const mime = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+        const mime = 'video/mp4; codecs="avc1.42E028, mp4a.40.2"';
 
         if (MediaSource.isTypeSupported(mime)) {
             sourceBuffer = mediaSource.addSourceBuffer(mime);
