@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+
+  <!-- Connection warm-up (keep) -->
+  <link rel="preconnect" href="https://ommuruga-package.hf.space">
+  <link rel="dns-prefetch" href="https://ommuruga-package.hf.space">
+
+  <title>Ultra-Fast Streaming</title>
+
+  <style>
+    body { font-family: system-ui; }
+    #query { width: 500px; height: 80px; }
+    #para { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+<textarea id="query" placeholder="Enter text"></textarea><br><br>
+<button onclick="generate()">Generate</button>
+
+<p id="para"></p>
+<div id="videos"></div>
+
+<script>
+async function generate() {
+  const textEl = document.getElementById("para");
+  const videosEl = document.getElementById("videos");
+
+  textEl.textContent = "";
+  videosEl.innerHTML = "";
+
+  /* ===============================
+     VIDEO: LIVE STREAM SETUP
+     =============================== */
+
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.controls = false;     // 🔴 disabled until final clip
+  video.muted = false;
+  video.width = 500;
+
+  const mediaSource = new MediaSource();
+  video.src = URL.createObjectURL(mediaSource);
+
+  videosEl.appendChild(video);
+
+  let sourceBuffer;
+  let bufferQueue = [];
+  let mediaReady = false;
+  let streamEnded = false;
+
+  mediaSource.addEventListener("sourceopen", () => {
+    // ⚠️ Codec must match your clips
+    const mime = 'video/mp4; codecs="avc1.42E01E"';
+
+    sourceBuffer = mediaSource.addSourceBuffer(mime);
+    sourceBuffer.mode = "sequence"; // 🔥 CRITICAL for gap-free playback
+
+    mediaReady = true;
+    flushQueue();
+  });
+
+  function flushQueue() {
+    if (!mediaReady || sourceBuffer.updating || bufferQueue.length === 0) return;
+    sourceBuffer.appendBuffer(bufferQueue.shift());
+  }
+
+  async function appendClip(url) {
+    const resp = await fetch(url);               // already fast (≈10 ms)
+    const buffer = await resp.arrayBuffer();     // zero copy
+    bufferQueue.push(buffer);
+    flushQueue();
+  }
+
+  /* ===============================
+     TEXT + EVENT STREAM
+     =============================== */
+
+  const response = await fetch(
+    "https://ommuruga-package.hf.space/generate",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        query: document.getElementById("query").value
+      })
+    }
+  );
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split("\n\n");
+    buffer = events.pop();
+
+    for (const event of events) {
+
+      /* ---------- TEXT STREAM ---------- */
+      if (event.startsWith("event: text")) {
+        const data = event.split("data:")[1];
+        if (data) textEl.textContent += data;
+      }
+
+      /* ---------- VIDEO CLIP ---------- */
+      if (event.startsWith("event: video_clip")) {
+        const json = event.split("data:")[1];
+        if (!json) continue;
+
+        const clip = JSON.parse(json);
+
+        // 🔥 append immediately while previous clip is playing
+        appendClip(clip.url);
+      }
+
+      /* ---------- VIDEO END ---------- */
+      if (event.startsWith("event: video_end")) {
+        streamEnded = true;
+
+        sourceBuffer.addEventListener("updateend", () => {
+          if (mediaSource.readyState === "open") {
+            mediaSource.endOfStream();
+            video.controls = true;   // 🔥 ENABLE CONTROLS ONLY NOW
+          }
+        }, { once: true });
+      }
+    }
+  }
+}
+</script>
+
+</body>
+</html>
