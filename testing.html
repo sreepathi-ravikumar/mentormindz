@@ -23,13 +23,12 @@
 <div id="videos"></div>
 
 <script>
-  let currentController = null;
-  let clipsExpected = 0;
+let currentController = null;
+let clipsExpected = 0;
 let clipsLoaded = 0;
 let streamEnded = false;
 let sourceBufferRemoved = false;
-
-unction maybeFinalize() {
+function maybeFinalize() {
   if (
     streamEnded &&
     clipsLoaded === clipsExpected &&
