@@ -14,6 +14,7 @@
     #query { width: 500px; height: 80px; }
     #para { white-space: pre-wrap; }
     video { display: block; margin-top: 20px; }
+    #status { color: #666; font-size: 12px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -22,20 +23,33 @@
 <button onclick="generate()">Generate</button>
 
 <p id="para"></p>
+<div id="status"></div>
 <div id="videos"></div>
 
 <script>
-  let streamClosed = false;
+  let currentGeneration = null;
 
   async function generate() {
     const textEl = document.getElementById("para");
     const videosEl = document.getElementById("videos");
+    const statusEl = document.getElementById("status");
 
     textEl.textContent = "";
     videosEl.innerHTML = "";
-    
-    // 🔥 CRITICAL: Reset stream state for new generation
-    streamClosed = false;
+    statusEl.textContent = "";
+
+    // 🔥 CRITICAL: Cancel previous generation
+    if (currentGeneration) {
+      currentGeneration.abort();
+    }
+
+    // Create new generation context
+    currentGeneration = {
+      abort: () => { currentGeneration.active = false; },
+      active: true
+    };
+
+    const generation = currentGeneration;
 
     /* ===============================
        VIDEO: LIVE STREAM SETUP
@@ -43,7 +57,7 @@
 
     const video = document.createElement("video");
     video.autoplay = true;
-    video.controls = false;     // disabled until final clip
+    video.controls = false;
     video.muted = false;
     video.width = 500;
 
@@ -52,66 +66,123 @@
 
     videosEl.appendChild(video);
 
-    let sourceBuffer;
+    let sourceBuffer = null;
     let bufferQueue = [];
     let mediaReady = false;
+    let allClipsReceived = false;
+    let clipCount = 0;
 
     mediaSource.addEventListener("sourceopen", () => {
-      // ⚠️ Codec must match your clips
+      if (!generation.active) return;
+
       const mime = 'video/mp4; codecs="avc1.42E01E"';
 
       if (!MediaSource.isTypeSupported(mime)) {
         console.error("MIME type not supported:", mime);
+        statusEl.textContent = "❌ MIME type not supported";
         return;
       }
 
-      sourceBuffer = mediaSource.addSourceBuffer(mime);
-      sourceBuffer.mode = "sequence"; // 🔥 CRITICAL for gap-free playback
+      try {
+        sourceBuffer = mediaSource.addSourceBuffer(mime);
+        sourceBuffer.mode = "sequence";
 
-      // 🔥 Setup updateend listener for queue processing
-      sourceBuffer.addEventListener("updateend", () => {
+        sourceBuffer.addEventListener("updateend", () => {
+          if (generation.active) {
+            flushQueue();
+          }
+        });
+
+        mediaReady = true;
+        statusEl.textContent = "✅ MediaSource ready";
         flushQueue();
-      });
-
-      mediaReady = true;
-      flushQueue();
+      } catch (e) {
+        console.error("SourceBuffer creation error:", e);
+        statusEl.textContent = "❌ SourceBuffer error: " + e.message;
+      }
     });
 
     function flushQueue() {
+      // 🔥 CRITICAL: Check if sourceBuffer is still valid
       if (
-        streamClosed ||
+        !generation.active ||
         !mediaReady ||
         !sourceBuffer ||
         sourceBuffer.updating ||
         bufferQueue.length === 0
-      ) return;
+      ) {
+        // Check if we're done
+        if (allClipsReceived && bufferQueue.length === 0 && sourceBuffer && !sourceBuffer.updating) {
+          finalizeStream();
+        }
+        return;
+      }
 
+      // 🔥 Double-check sourceBuffer parent before appending
       try {
-        sourceBuffer.appendBuffer(bufferQueue.shift());
+        if (!mediaSource || mediaSource.readyState !== "open") {
+          console.warn("MediaSource not open, clearing queue");
+          bufferQueue = [];
+          return;
+        }
+
+        const buffer = bufferQueue.shift();
+        sourceBuffer.appendBuffer(buffer);
       } catch (e) {
-        console.warn("appendBuffer error:", e);
-        // Retry on next updateend
+        console.error("appendBuffer error:", e);
+        statusEl.textContent = "❌ Append error: " + e.message;
+        bufferQueue = [];
       }
     }
 
     async function appendClip(url) {
-      if (streamClosed) return;
+      if (!generation.active) return;
+
+      clipCount++;
+      const currentClip = clipCount;
 
       try {
-        const resp = await fetch(url);
-        if (!resp.ok) {
-          console.error("Failed to fetch clip:", url);
+        // 🔥 Force fresh fetch (avoid 304)
+        const resp = await fetch(url, {
+          cache: "no-cache",  // Prevent 304 if you want fresh data
+          // OR use: cache: "default" to allow 304 (faster, uses cache)
+        });
+
+        // ✅ Accept both 200 and 206 (partial content) and 304
+        if (!resp.ok && resp.status !== 206 && resp.status !== 304) {
+          console.error(`Clip ${currentClip} failed: ${resp.status}`);
+          statusEl.textContent = `⚠️ Clip ${currentClip}: Status ${resp.status}`;
           return;
         }
 
+        console.log(`✅ Clip ${currentClip}: Status ${resp.status}`);
+
         const buffer = await resp.arrayBuffer();
 
-        if (streamClosed) return;  // double safety check
+        // 🔥 Check if still active after async operation
+        if (!generation.active || !mediaReady) return;
 
         bufferQueue.push(buffer);
+        statusEl.textContent = `📦 Clips loaded: ${currentClip} | Queue: ${bufferQueue.length}`;
         flushQueue();
       } catch (e) {
-        console.error("Error fetching clip:", e);
+        console.error(`Error fetching clip ${currentClip}:`, e);
+        statusEl.textContent = `❌ Clip ${currentClip} error: ${e.message}`;
+      }
+    }
+
+    function finalizeStream() {
+      if (!generation.active) return;
+      
+      try {
+        if (mediaSource && mediaSource.readyState === "open") {
+          mediaSource.endOfStream();
+          video.controls = true;
+          statusEl.textContent = `✅ Stream complete! ${clipCount} clips loaded`;
+        }
+      } catch (e) {
+        console.error("Error ending stream:", e);
+        statusEl.textContent = "❌ Finalize error: " + e.message;
       }
     }
 
@@ -125,13 +196,15 @@
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"  // 🔥 CRITICAL: Missing header
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
             query: document.getElementById("query").value
           })
         }
       );
+
+      console.log(`📡 Text stream: Status ${response.status}`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -141,7 +214,7 @@
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
+      while (generation.active) {
         const { value, done } = await reader.read();
         if (done) break;
 
@@ -151,7 +224,7 @@
         buffer = events.pop();
 
         for (const event of events) {
-          if (!event.trim()) continue;  // 🔥 Skip empty events
+          if (!event.trim() || !generation.active) continue;
 
           /* ---------- TEXT STREAM ---------- */
           if (event.startsWith("event: text")) {
@@ -167,7 +240,7 @@
             try {
               const clip = JSON.parse(dataLine.trim());
               if (clip.url) {
-                await appendClip(clip.url);  // 🔥 Await to handle errors properly
+                appendClip(clip.url);  // Don't await - let it queue
               }
             } catch (e) {
               console.error("Error parsing video clip JSON:", e);
@@ -176,42 +249,34 @@
 
           /* ---------- VIDEO END ---------- */
           if (event.startsWith("event: video_end")) {
-            streamClosed = true;
+            allClipsReceived = true;
 
-            const finalize = () => {
-              if (mediaSource.readyState === "open") {
-                try {
-                  mediaSource.endOfStream();
-                  video.controls = true;   // enable controls ONLY now
-                } catch (e) {
-                  console.error("Error ending stream:", e);
-                }
-              }
-            };
-
-            // 🔥 Wait for all buffers to be appended
-            if (sourceBuffer && sourceBuffer.updating) {
-              sourceBuffer.addEventListener("updateend", finalize, { once: true });
-            } else if (bufferQueue.length > 0) {
-              // Wait for queue to flush
-              const waitForQueue = setInterval(() => {
+            // Try to finalize if queue is empty
+            if (bufferQueue.length === 0 && sourceBuffer && !sourceBuffer.updating) {
+              finalizeStream();
+            } else if (sourceBuffer) {
+              // Wait for queue to finish
+              sourceBuffer.addEventListener("updateend", function checkFinish() {
                 if (bufferQueue.length === 0 && !sourceBuffer.updating) {
-                  clearInterval(waitForQueue);
-                  finalize();
+                  sourceBuffer.removeEventListener("updateend", checkFinish);
+                  finalizeStream();
                 }
-              }, 100);
-            } else {
-              finalize();
+              });
             }
           }
         }
       }
     } catch (e) {
       console.error("Stream error:", e);
-      textEl.textContent += "\n\nError: " + e.message;
+      if (generation.active) {
+        textEl.textContent += "\n\nError: " + e.message;
+        statusEl.textContent = "❌ Stream error: " + e.message;
+      }
     }
   }
 </script>
 
 </body>
 </html>
+
+
