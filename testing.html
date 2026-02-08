@@ -28,6 +28,7 @@ let clipsExpected = 0;
 let clipsLoaded = 0;
 let streamEnded = false;
 let sourceBufferRemoved = false;
+  let playbackStarted = false;
 
 
   async function generate() {
@@ -49,9 +50,9 @@ let sourceBufferRemoved = false;
     video.controls = true;
     
     // CRITICAL FIX: Start muted to allow autoplay
-    video.muted = true; 
-    video.autoplay = true;
-    video.playsInline = true;
+    video.muted = true;
+video.autoplay = true;
+video.playsInline = true;
     
     videosEl.appendChild(video);
 
@@ -82,25 +83,31 @@ let sourceBufferRemoved = false;
         }
     });
 
-    function processQueue() {
-        if (!sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
+   function processQueue() {
+  if (
+    !sourceBuffer ||
+    sourceBuffer.updating ||
+    queue.length === 0 ||
+    mediaSource.readyState !== "open"
+  ) return;
 
-        const chunk = queue.shift();
-        try {
-           if (
-  sourceBuffer &&
-  mediaSource.readyState === "open" &&
-  !sourceBuffer.updating
-) {
-  sourceBuffer.appendBuffer(chunk);
-}
+  try {
+    const chunk = queue.shift();
+    sourceBuffer.appendBuffer(chunk);
 
-        } catch (e) {
-            console.error("Append Error:", e);
-            // If quota exceeded, we might need to remove old buffer, 
-            // but for short clips, this usually means corrupt data.
-        }
+    // 🔥 START PLAYBACK AFTER FIRST APPEND
+    if (!playbackStarted) {
+      playbackStarted = true;
+      video.play().catch(() => {
+        // autoplay policy fallback (user gesture required)
+        statusEl.textContent = "▶️ Tap video to play";
+      });
     }
+
+  } catch (e) {
+    console.error("appendBuffer failed:", e);
+  }
+}
 function maybeFinalize() {
   if (
     streamEnded &&
