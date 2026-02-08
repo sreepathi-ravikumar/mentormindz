@@ -24,6 +24,29 @@
 
 <script>
   let currentController = null;
+  let clipsExpected = 0;
+let clipsLoaded = 0;
+let streamEnded = false;
+let sourceBufferRemoved = false;
+
+unction maybeFinalize() {
+  if (
+    streamEnded &&
+    clipsLoaded === clipsExpected &&
+    queue.length === 0 &&
+    sourceBuffer &&
+    !sourceBuffer.updating &&
+    mediaSource.readyState === "open"
+  ) {
+    try {
+      sourceBuffer.removeEventListener("updateend", processQueue);
+      mediaSource.endOfStream();
+      statusEl.textContent = "✨ Generation Complete";
+    } catch (e) {
+      console.warn("Finalize skipped:", e);
+    }
+  }
+}
 
   async function generate() {
     const textEl = document.getElementById("para");
@@ -82,7 +105,14 @@
 
         const chunk = queue.shift();
         try {
-            sourceBuffer.appendBuffer(chunk);
+           if (
+  sourceBuffer &&
+  mediaSource.readyState === "open" &&
+  !sourceBuffer.updating
+) {
+  sourceBuffer.appendBuffer(chunk);
+}
+
         } catch (e) {
             console.error("Append Error:", e);
             // If quota exceeded, we might need to remove old buffer, 
@@ -117,34 +147,29 @@
                     textEl.textContent += data;
                 } 
                 else if (line.startsWith("event: video_clip")) {
-                    const jsonStr = line.split("data: ")[1];
-                    try {
-                        const clipData = JSON.parse(jsonStr);
-                        console.log("📥 Loading clip:", clipData.url);
-                        
-                        // Fetch the video file as an ArrayBuffer
-                        const vidResp = await fetch(clipData.url);
-                        const vidBuffer = await vidResp.arrayBuffer();
-                        
-                        queue.push(vidBuffer);
-                        processQueue();
-                        
-                    } catch (e) {
-                        console.error("Error parsing/fetching clip", e);
-                    }
-                }
-                else if (line.startsWith("event: video_end")) {
-                    // Wait for queue to empty before ending stream
-                    const checkEnd = setInterval(() => {
-                        if (queue.length === 0 && !sourceBuffer.updating) {
-                            clearInterval(checkEnd);
-                            if (mediaSource.readyState === 'open') {
-                                mediaSource.endOfStream();
-                                statusEl.textContent = "✨ Generation Complete";
-                            }
-                        }
-                    }, 500);
-                }
+  clipsExpected++;
+
+  const jsonStr = line.split("data: ")[1];
+  const clipData = JSON.parse(jsonStr);
+
+  fetch(clipData.url)
+    .then(r => r.arrayBuffer())
+    .then(buf => {
+      clipsLoaded++;
+      queue.push(buf);
+      processQueue();
+      maybeFinalize();
+    })
+    .catch(err => {
+      clipsLoaded++;
+      console.error("Clip fetch error", err);
+      maybeFinalize();
+    });
+}
+               else if (line.startsWith("event: video_end")) {
+  streamEnded = true;
+  maybeFinalize();
+}
             }
         }
     } catch (err) {
