@@ -69,8 +69,13 @@
     let sourceBuffer = null;
     let bufferQueue = [];
     let mediaReady = false;
-    let allClipsReceived = false;
+    let streamEndReceived = false;
     let clipCount = 0;
+    let clipsExpected = 0;
+    let clipsLoaded = 0;
+
+    // 🔥 CRITICAL: Prevent MediaSource from closing prematurely
+    let keepAlive = true;
 
     mediaSource.addEventListener("sourceopen", () => {
       if (!generation.active) return;
@@ -103,7 +108,6 @@
     });
 
     function flushQueue() {
-      // 🔥 CRITICAL: Check if sourceBuffer is still valid
       if (
         !generation.active ||
         !mediaReady ||
@@ -111,27 +115,29 @@
         sourceBuffer.updating ||
         bufferQueue.length === 0
       ) {
-        // Check if we're done
-        if (allClipsReceived && bufferQueue.length === 0 && sourceBuffer && !sourceBuffer.updating) {
+        // 🔥 Only finalize when ALL clips are loaded AND stream ended
+        if (streamEndReceived && 
+            clipsLoaded === clipsExpected && 
+            bufferQueue.length === 0 && 
+            sourceBuffer && 
+            !sourceBuffer.updating) {
           finalizeStream();
         }
         return;
       }
 
-      // 🔥 Double-check sourceBuffer parent before appending
-      try {
-        if (!mediaSource || mediaSource.readyState !== "open") {
-          console.warn("MediaSource not open, clearing queue");
-          bufferQueue = [];
-          return;
-        }
+      // 🔥 CRITICAL: Check MediaSource state ONLY if keepAlive is true
+      if (!keepAlive || !mediaSource || mediaSource.readyState !== "open") {
+        console.warn("MediaSource not open");
+        return; // Don't clear queue - just wait
+      }
 
+      try {
         const buffer = bufferQueue.shift();
         sourceBuffer.appendBuffer(buffer);
       } catch (e) {
         console.error("appendBuffer error:", e);
         statusEl.textContent = "❌ Append error: " + e.message;
-        bufferQueue = [];
       }
     }
 
@@ -139,19 +145,18 @@
       if (!generation.active) return;
 
       clipCount++;
+      clipsExpected = clipCount;
       const currentClip = clipCount;
 
       try {
-        // 🔥 Force fresh fetch (avoid 304)
         const resp = await fetch(url, {
-          cache: "no-cache",  // Prevent 304 if you want fresh data
-          // OR use: cache: "default" to allow 304 (faster, uses cache)
+          cache: "default"  // Allow browser caching for speed
         });
 
-        // ✅ Accept both 200 and 206 (partial content) and 304
-        if (!resp.ok && resp.status !== 206 && resp.status !== 304) {
+        if (!resp.ok && resp.status !== 206) {
           console.error(`Clip ${currentClip} failed: ${resp.status}`);
           statusEl.textContent = `⚠️ Clip ${currentClip}: Status ${resp.status}`;
+          clipsLoaded++; // Count as loaded to prevent hanging
           return;
         }
 
@@ -160,25 +165,44 @@
         const buffer = await resp.arrayBuffer();
 
         // 🔥 Check if still active after async operation
-        if (!generation.active || !mediaReady) return;
+        if (!generation.active) return;
+
+        // 🔥 CRITICAL: Wait for MediaSource to be ready
+        if (!mediaReady) {
+          console.log(`⏳ Waiting for MediaSource... Clip ${currentClip}`);
+          await new Promise(resolve => {
+            const checkReady = setInterval(() => {
+              if (mediaReady || !generation.active) {
+                clearInterval(checkReady);
+                resolve();
+              }
+            }, 50);
+          });
+        }
+
+        if (!generation.active) return;
 
         bufferQueue.push(buffer);
-        statusEl.textContent = `📦 Clips loaded: ${currentClip} | Queue: ${bufferQueue.length}`;
+        clipsLoaded++;
+        statusEl.textContent = `📦 Clips: ${clipsLoaded}/${clipsExpected} loaded | Queue: ${bufferQueue.length}`;
         flushQueue();
       } catch (e) {
         console.error(`Error fetching clip ${currentClip}:`, e);
         statusEl.textContent = `❌ Clip ${currentClip} error: ${e.message}`;
+        clipsLoaded++; // Count as loaded to prevent hanging
       }
     }
 
     function finalizeStream() {
       if (!generation.active) return;
+      keepAlive = false; // Allow MediaSource to close now
       
       try {
         if (mediaSource && mediaSource.readyState === "open") {
           mediaSource.endOfStream();
           video.controls = true;
-          statusEl.textContent = `✅ Stream complete! ${clipCount} clips loaded`;
+          statusEl.textContent = `✅ Stream complete! ${clipsLoaded}/${clipsExpected} clips`;
+          console.log(`🎬 Finalized with ${clipsLoaded} clips`);
         }
       } catch (e) {
         console.error("Error ending stream:", e);
@@ -240,7 +264,7 @@
             try {
               const clip = JSON.parse(dataLine.trim());
               if (clip.url) {
-                appendClip(clip.url);  // Don't await - let it queue
+                appendClip(clip.url);  // Don't await - parallel loading
               }
             } catch (e) {
               console.error("Error parsing video clip JSON:", e);
@@ -249,20 +273,27 @@
 
           /* ---------- VIDEO END ---------- */
           if (event.startsWith("event: video_end")) {
-            allClipsReceived = true;
+            console.log("🏁 Stream end received");
+            streamEndReceived = true;
 
-            // Try to finalize if queue is empty
-            if (bufferQueue.length === 0 && sourceBuffer && !sourceBuffer.updating) {
-              finalizeStream();
-            } else if (sourceBuffer) {
-              // Wait for queue to finish
-              sourceBuffer.addEventListener("updateend", function checkFinish() {
-                if (bufferQueue.length === 0 && !sourceBuffer.updating) {
-                  sourceBuffer.removeEventListener("updateend", checkFinish);
+            // 🔥 Wait for all clips to finish loading
+            const waitForClips = setInterval(() => {
+              if (clipsLoaded >= clipsExpected) {
+                clearInterval(waitForClips);
+                
+                // Wait for buffer queue to empty
+                if (bufferQueue.length === 0 && sourceBuffer && !sourceBuffer.updating) {
                   finalizeStream();
+                } else if (sourceBuffer) {
+                  sourceBuffer.addEventListener("updateend", function checkFinish() {
+                    if (bufferQueue.length === 0 && !sourceBuffer.updating) {
+                      sourceBuffer.removeEventListener("updateend", checkFinish);
+                      finalizeStream();
+                    }
+                  });
                 }
-              });
-            }
+              }
+            }, 100);
           }
         }
       }
@@ -278,5 +309,3 @@
 
 </body>
 </html>
-
-
