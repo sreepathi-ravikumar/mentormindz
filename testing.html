@@ -2,310 +2,157 @@
 <html>
 <head>
   <meta charset="utf-8" />
-
-  <!-- Connection warm-up (keep) -->
-  <link rel="preconnect" href="https://ommuruga-package.hf.space">
-  <link rel="dns-prefetch" href="https://ommuruga-package.hf.space">
-
   <title>Ultra-Fast Streaming</title>
-
   <style>
-    body { font-family: system-ui; padding: 20px; }
-    #query { width: 500px; height: 80px; }
-    #para { white-space: pre-wrap; }
-    video { display: block; margin-top: 20px; }
-    #status { color: #666; font-size: 12px; margin-top: 10px; }
+    body { font-family: system-ui; padding: 20px; max-width: 800px; margin: 0 auto; }
+    #query { width: 100%; height: 80px; padding: 10px; }
+    #para { white-space: pre-wrap; background: #f4f4f4; padding: 15px; border-radius: 8px; min-height: 50px;}
+    video { display: block; margin-top: 20px; background: #000; width: 100%; border-radius: 8px; }
+    #status { color: #666; font-size: 12px; margin-top: 10px; font-family: monospace; }
+    button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #0056b3; }
   </style>
 </head>
 <body>
 
-<textarea id="query" placeholder="Enter text"></textarea><br><br>
-<button onclick="generate()">Generate</button>
+<textarea id="query" placeholder="Enter prompt here..."></textarea><br><br>
+<button onclick="generate()">Generate Stream</button>
 
-<p id="para"></p>
 <div id="status"></div>
+<p id="para"></p>
 <div id="videos"></div>
 
 <script>
-  let currentGeneration = null;
+  let currentController = null;
 
   async function generate() {
     const textEl = document.getElementById("para");
     const videosEl = document.getElementById("videos");
     const statusEl = document.getElementById("status");
 
+    // Reset UI
     textEl.textContent = "";
     videosEl.innerHTML = "";
-    statusEl.textContent = "";
+    statusEl.textContent = "Initializing...";
 
-    // 🔥 CRITICAL: Cancel previous generation
-    if (currentGeneration) {
-      currentGeneration.abort();
-    }
+    if (currentController) currentController.abort();
+    currentController = new AbortController();
+    const signal = currentController.signal;
 
-    // Create new generation context
-    currentGeneration = {
-      abort: () => { currentGeneration.active = false; },
-      active: true
-    };
-
-    const generation = currentGeneration;
-
-    /* ===============================
-       VIDEO: LIVE STREAM SETUP
-       =============================== */
-
+    // 1. SETUP VIDEO PLAYER
     const video = document.createElement("video");
+    video.controls = true;
+    
+    // CRITICAL FIX: Start muted to allow autoplay
+    video.muted = true; 
     video.autoplay = true;
-    video.controls = false;
-    video.muted = false;
-    video.width = 500;
+    video.playsInline = true;
+    
+    videosEl.appendChild(video);
 
+    // 2. SETUP MEDIA SOURCE
     const mediaSource = new MediaSource();
     video.src = URL.createObjectURL(mediaSource);
 
-    videosEl.appendChild(video);
-
     let sourceBuffer = null;
-    let bufferQueue = [];
-    let mediaReady = false;
-    let streamEndReceived = false;
-    let clipCount = 0;
-    let clipsExpected = 0;
-    let clipsLoaded = 0;
-
-    // 🔥 CRITICAL: Prevent MediaSource from closing prematurely
-    let keepAlive = true;
+    let queue = [];
+    let isAppending = false;
 
     mediaSource.addEventListener("sourceopen", () => {
-      if (!generation.active) return;
+        // CRITICAL FIX: Declare BOTH Video (avc1) and Audio (mp4a) codecs
+        // This must match the FFmpeg output exactly
+        const mime = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
 
-      const mime = 'video/mp4; codecs="avc1.42E01E"';
-
-      if (!MediaSource.isTypeSupported(mime)) {
-        console.error("MIME type not supported:", mime);
-        statusEl.textContent = "❌ MIME type not supported";
-        return;
-      }
-
-      try {
-        sourceBuffer = mediaSource.addSourceBuffer(mime);
-        sourceBuffer.mode = "sequence";
-
-        sourceBuffer.addEventListener("updateend", () => {
-          if (generation.active) {
-            flushQueue();
-          }
-        });
-
-        mediaReady = true;
-        statusEl.textContent = "✅ MediaSource ready";
-        flushQueue();
-      } catch (e) {
-        console.error("SourceBuffer creation error:", e);
-        statusEl.textContent = "❌ SourceBuffer error: " + e.message;
-      }
+        if (MediaSource.isTypeSupported(mime)) {
+            sourceBuffer = mediaSource.addSourceBuffer(mime);
+            
+            // "sequence" mode makes the browser automatically stitch clips 
+            // regardless of their internal timestamps
+            sourceBuffer.mode = 'sequence'; 
+            
+            sourceBuffer.addEventListener('updateend', processQueue);
+            statusEl.textContent = "✅ System Ready. Waiting for data...";
+        } else {
+            statusEl.textContent = "❌ MIME type not supported on this browser.";
+        }
     });
 
-    function flushQueue() {
-      if (
-        !generation.active ||
-        !mediaReady ||
-        !sourceBuffer ||
-        sourceBuffer.updating ||
-        bufferQueue.length === 0
-      ) {
-        // 🔥 Only finalize when ALL clips are loaded AND stream ended
-        if (streamEndReceived && 
-            clipsLoaded === clipsExpected && 
-            bufferQueue.length === 0 && 
-            sourceBuffer && 
-            !sourceBuffer.updating) {
-          finalizeStream();
+    function processQueue() {
+        if (!sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
+
+        const chunk = queue.shift();
+        try {
+            sourceBuffer.appendBuffer(chunk);
+        } catch (e) {
+            console.error("Append Error:", e);
+            // If quota exceeded, we might need to remove old buffer, 
+            // but for short clips, this usually means corrupt data.
         }
-        return;
-      }
-
-      // 🔥 CRITICAL: Check MediaSource state ONLY if keepAlive is true
-      if (!keepAlive || !mediaSource || mediaSource.readyState !== "open") {
-        console.warn("MediaSource not open");
-        return; // Don't clear queue - just wait
-      }
-
-      try {
-        const buffer = bufferQueue.shift();
-        sourceBuffer.appendBuffer(buffer);
-      } catch (e) {
-        console.error("appendBuffer error:", e);
-        statusEl.textContent = "❌ Append error: " + e.message;
-      }
     }
 
-    async function appendClip(url) {
-      if (!generation.active) return;
-
-      clipCount++;
-      clipsExpected = clipCount;
-      const currentClip = clipCount;
-
-      try {
-        const resp = await fetch(url, {
-          cache: "default"  // Allow browser caching for speed
+    // 3. FETCH STREAM
+    try {
+        const response = await fetch("https://ommuruga-package.hf.space/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: document.getElementById("query").value }),
+            signal
         });
 
-        if (!resp.ok && resp.status !== 206) {
-          console.error(`Clip ${currentClip} failed: ${resp.status}`);
-          statusEl.textContent = `⚠️ Clip ${currentClip}: Status ${resp.status}`;
-          clipsLoaded++; // Count as loaded to prevent hanging
-          return;
-        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-        console.log(`✅ Clip ${currentClip}: Status ${resp.status}`);
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-        const buffer = await resp.arrayBuffer();
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop();
 
-        // 🔥 Check if still active after async operation
-        if (!generation.active) return;
-
-        // 🔥 CRITICAL: Wait for MediaSource to be ready
-        if (!mediaReady) {
-          console.log(`⏳ Waiting for MediaSource... Clip ${currentClip}`);
-          await new Promise(resolve => {
-            const checkReady = setInterval(() => {
-              if (mediaReady || !generation.active) {
-                clearInterval(checkReady);
-                resolve();
-              }
-            }, 50);
-          });
-        }
-
-        if (!generation.active) return;
-
-        bufferQueue.push(buffer);
-        clipsLoaded++;
-        statusEl.textContent = `📦 Clips: ${clipsLoaded}/${clipsExpected} loaded | Queue: ${bufferQueue.length}`;
-        flushQueue();
-      } catch (e) {
-        console.error(`Error fetching clip ${currentClip}:`, e);
-        statusEl.textContent = `❌ Clip ${currentClip} error: ${e.message}`;
-        clipsLoaded++; // Count as loaded to prevent hanging
-      }
-    }
-
-    function finalizeStream() {
-      if (!generation.active) return;
-      keepAlive = false; // Allow MediaSource to close now
-      
-      try {
-        if (mediaSource && mediaSource.readyState === "open") {
-          mediaSource.endOfStream();
-          video.controls = true;
-          statusEl.textContent = `✅ Stream complete! ${clipsLoaded}/${clipsExpected} clips`;
-          console.log(`🎬 Finalized with ${clipsLoaded} clips`);
-        }
-      } catch (e) {
-        console.error("Error ending stream:", e);
-        statusEl.textContent = "❌ Finalize error: " + e.message;
-      }
-    }
-
-    /* ===============================
-       TEXT + EVENT STREAM
-       =============================== */
-
-    try {
-      const response = await fetch(
-        "https://ommuruga-package.hf.space/generate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            query: document.getElementById("query").value
-          })
-        }
-      );
-
-      console.log(`📡 Text stream: Status ${response.status}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (generation.active) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const events = buffer.split("\n\n");
-        buffer = events.pop();
-
-        for (const event of events) {
-          if (!event.trim() || !generation.active) continue;
-
-          /* ---------- TEXT STREAM ---------- */
-          if (event.startsWith("event: text")) {
-            const data = event.split("data:")[1];
-            if (data) textEl.textContent += data.trim();
-          }
-
-          /* ---------- VIDEO CLIP ---------- */
-          if (event.startsWith("event: video_clip")) {
-            const dataLine = event.split("data:")[1];
-            if (!dataLine) continue;
-
-            try {
-              const clip = JSON.parse(dataLine.trim());
-              if (clip.url) {
-                appendClip(clip.url);  // Don't await - parallel loading
-              }
-            } catch (e) {
-              console.error("Error parsing video clip JSON:", e);
-            }
-          }
-
-          /* ---------- VIDEO END ---------- */
-          if (event.startsWith("event: video_end")) {
-            console.log("🏁 Stream end received");
-            streamEndReceived = true;
-
-            // 🔥 Wait for all clips to finish loading
-            const waitForClips = setInterval(() => {
-              if (clipsLoaded >= clipsExpected) {
-                clearInterval(waitForClips);
-                
-                // Wait for buffer queue to empty
-                if (bufferQueue.length === 0 && sourceBuffer && !sourceBuffer.updating) {
-                  finalizeStream();
-                } else if (sourceBuffer) {
-                  sourceBuffer.addEventListener("updateend", function checkFinish() {
-                    if (bufferQueue.length === 0 && !sourceBuffer.updating) {
-                      sourceBuffer.removeEventListener("updateend", checkFinish);
-                      finalizeStream();
+            for (const line of lines) {
+                if (line.startsWith("event: text")) {
+                    const data = line.replace("event: text", "").replace("data: ", "").trim();
+                    textEl.textContent += data;
+                } 
+                else if (line.startsWith("event: video_clip")) {
+                    const jsonStr = line.split("data: ")[1];
+                    try {
+                        const clipData = JSON.parse(jsonStr);
+                        console.log("📥 Loading clip:", clipData.url);
+                        
+                        // Fetch the video file as an ArrayBuffer
+                        const vidResp = await fetch(clipData.url);
+                        const vidBuffer = await vidResp.arrayBuffer();
+                        
+                        queue.push(vidBuffer);
+                        processQueue();
+                        
+                    } catch (e) {
+                        console.error("Error parsing/fetching clip", e);
                     }
-                  });
                 }
-              }
-            }, 100);
-          }
+                else if (line.startsWith("event: video_end")) {
+                    // Wait for queue to empty before ending stream
+                    const checkEnd = setInterval(() => {
+                        if (queue.length === 0 && !sourceBuffer.updating) {
+                            clearInterval(checkEnd);
+                            if (mediaSource.readyState === 'open') {
+                                mediaSource.endOfStream();
+                                statusEl.textContent = "✨ Generation Complete";
+                            }
+                        }
+                    }, 500);
+                }
+            }
         }
-      }
-    } catch (e) {
-      console.error("Stream error:", e);
-      if (generation.active) {
-        textEl.textContent += "\n\nError: " + e.message;
-        statusEl.textContent = "❌ Stream error: " + e.message;
-      }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            statusEl.textContent = "❌ Error: " + err.message;
+        }
     }
   }
 </script>
-
 </body>
 </html>
