@@ -236,13 +236,12 @@ body {
       display: flex;
       align-items: center;
       border-radius: 28px;
-      background: var(--light-gray);
       margin: 8px auto;
       padding: 6px 10px 6px 8px;
       width: 95%;
       max-width: 420px;
-      box-shadow: 0 1px 5px var(--shadow-color);
-      border: 1px solid var(--medium-gray);
+      box-shadow: 1px 1px 50px var(--shadow-color);
+      border: 0.5px solid var(--medium-gray);
     }
     .chat-box input {
       flex: 1;
