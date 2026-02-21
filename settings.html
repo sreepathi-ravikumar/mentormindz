@@ -762,526 +762,499 @@
 
     <script>
         // ==================== FIREBASE CONFIGURATION ====================
-        const firebaseConfig = {
-            apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
-            authDomain: "mentormindz-8211a.firebaseapp.com",
-            projectId: "mentormindz-8211a",
-            storageBucket: "mentormindz-8211a.firebasestorage.app",
-            messagingSenderId: "913045756560",
-            appId: "1:913045756560:web:65cc21aca54ac1c2739615"
-        };
+       // ==================== FIREBASE CONFIGURATION ====================
+// Note: For a true production environment, ensure your Firestore Security Rules 
+// strictly validate read/write access based on request.auth.uid.
+const firebaseConfig = {
+    apiKey: "AIzaSyBJRcS9yjRZKin08Dvl3EQKuGByf0MWtM0",
+    authDomain: "mentormindz-8211a.firebaseapp.com",
+    projectId: "mentormindz-8211a",
+    storageBucket: "mentormindz-8211a.firebasestorage.app",
+    messagingSenderId: "913045756560",
+    appId: "1:913045756560:web:65cc21aca54ac1c2739615"
+};
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+// Initialize only if no apps exist to prevent initialization errors on hot reloads
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-        // ==================== GLOBAL STATE ====================
-        let uid = null;
-        let userData = null;
-        let unsubscribeSnapshot = null;
-        let isSheetAnimating = false;
+// ==================== GLOBAL STATE ====================
+let uid = null;
+let userData = null;
+let unsubscribeSnapshot = null;
+let isSheetAnimating = false;
+let notificationTimer = null;
+let isSaving = false;
 
-        const SETTINGS = {
-            appLanguage: {
-                title: "App Language",
-                search: true,
-                options: ["English", "Tamil", "Hindi", "French", "German", "Spanish", "Japanese", "Korean"]
-            },
-            voiceLanguage: {
-                title: "Voice Language",
-                search: false,
-                options: ["English", "Tamil", "Hindi"]
-            },
-            theme: {
-                title: "Theme",
-                search: false,
-                options: ["System", "Light", "Dark"]
-            },
-            appTone: {
-                title: "App Tone",
-                search: false,
-                options: [
-                    { name: "Aurora Blue", value: "#6366f1" },
-                    { name: "Neural Violet", value: "#8b5cf6" },
-                    { name: "Pulse Pink", value: "#ec4899" },
-                    { name: "Zen Green", value: "#22c55e" },
-                    { name: "Solar Amber", value: "#f59e0b" },
-                    { name: "Midnight Slate", value: "#1f2937" }
-                ]
+const SETTINGS = {
+    appLanguage: {
+        title: "App Language",
+        search: true,
+        options: ["English", "Tamil", "Hindi", "French", "German", "Spanish", "Japanese", "Korean"]
+    },
+    voiceLanguage: {
+        title: "Voice Language",
+        search: false,
+        options: ["English", "Tamil", "Hindi"]
+    },
+    theme: {
+        title: "Theme",
+        search: false,
+        options: ["System", "Light", "Dark"]
+    },
+    appTone: {
+        title: "App Tone",
+        search: false,
+        options: [
+            { name: "Aurora Blue", value: "#6366f1" },
+            { name: "Neural Violet", value: "#8b5cf6" },
+            { name: "Pulse Pink", value: "#ec4899" },
+            { name: "Zen Green", value: "#22c55e" },
+            { name: "Solar Amber", value: "#f59e0b" },
+            { name: "Midnight Slate", value: "#1f2937" }
+        ]
+    }
+};
+
+let currentKey = null;
+let currentSelection = {
+    theme: "System",
+    appLanguage: "English",
+    voiceLanguage: "English",
+    appTone: "#6366f1",
+    appToneName: "Aurora Blue"
+};
+
+// ==================== NOTIFICATION SYSTEM ====================
+function showNotification(message, isError = false) {
+    const indicator = document.getElementById('savingIndicator');
+    const text = document.getElementById('savingText');
+    const icon = indicator?.querySelector('i');
+
+    if (!indicator || !text || !icon) return;
+
+    if (notificationTimer) {
+        clearTimeout(notificationTimer);
+        notificationTimer = null;
+    }
+
+    text.textContent = message;
+
+    if (isError) {
+        icon.className = 'fa-solid fa-exclamation-circle';
+        indicator.classList.add('error');
+    } else if (message === 'Saving...') {
+        icon.className = 'fa-solid fa-spinner fa-spin';
+        indicator.classList.remove('error');
+    } else {
+        icon.className = 'fa-solid fa-check-circle';
+        indicator.classList.remove('error');
+    }
+
+    indicator.classList.add('show');
+
+    if (message !== 'Saving...') {
+        notificationTimer = setTimeout(() => {
+            indicator.classList.remove('show');
+        }, 1500);
+    }
+}
+
+// ==================== AUTH STATE HANDLER ====================
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    uid = user.uid;
+    userData = user;
+    
+    updateProfileFromAuth(user);
+    await loadUserSettings();
+});
+
+// ==================== UPDATE PROFILE FROM AUTH ====================
+function updateProfileFromAuth(user) {
+    // Added safety check in case user.email is null (e.g., anonymous auth or phone auth)
+    const fallbackName = user.email ? user.email.split('@')[0] : 'User';
+    const displayName = user.displayName || fallbackName;
+    const email = user.email || 'No email provided';
+    const photoURL = user.photoURL;
+    
+    updateElement('profileName', displayName);
+    updateElement('emailDisplay', `Email: ${email}`);
+    updateProfilePhoto(photoURL, displayName);
+    hideSkeletons();
+}
+
+function updateProfilePhoto(photoURL, displayName) {
+    const avatarEl = document.getElementById('userAvatar');
+    if (!avatarEl) return;
+    
+    avatarEl.innerHTML = '';
+    
+    if (photoURL) {
+        const img = document.createElement('img');
+        img.className = 'avatar-img fade-in';
+        img.src = photoURL;
+        img.alt = displayName;
+        avatarEl.appendChild(img);
+    } else {
+        const fallback = document.createElement('div');
+        fallback.className = 'avatar-fallback';
+        // Ensure displayName exists before slicing
+        const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '🌍';
+        fallback.textContent = initials;
+        avatarEl.appendChild(fallback);
+    }
+}
+
+// ==================== LOAD USER SETTINGS ====================
+async function loadUserSettings() {
+    if (!uid) return;
+
+    try {
+        const docRef = db.collection("users").doc(uid);
+        const doc = await docRef.get();
+        
+        if (doc.exists) {
+            const data = doc.data();
+            
+            if (data.preferences) {
+                currentSelection.theme = data.preferences.theme ?? "System";
+                currentSelection.appLanguage = data.preferences.appLanguage ?? "English";
+                currentSelection.voiceLanguage = data.preferences.voiceLanguage ?? "English";
             }
-        };
-
-        let currentKey = null;
-        let currentSelection = {
-            theme: "System",
-            appLanguage: "English",
-            voiceLanguage: "English",
-            appTone: "#6366f1",
-            appToneName: "Aurora Blue"
-        };
-
-        let notificationTimer = null;
-
-        // ==================== NOTIFICATION SYSTEM (single definition) ====================
-        function showNotification(message, isError = false) {
-            const indicator = document.getElementById('savingIndicator');
-            const text = document.getElementById('savingText');
-            const icon = indicator.querySelector('i');
-
-            if (notificationTimer) {
-                clearTimeout(notificationTimer);
-                notificationTimer = null;
+            
+            if (data.account?.appTone) {
+                currentSelection.appTone = data.account.appTone;
+                const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
+                currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
             }
-
-            text.textContent = message;
-
-            if (isError) {
-                icon.className = 'fa-solid fa-exclamation-circle';
-                indicator.classList.add('error');
-            } else if (message === 'Saving...') {
-                icon.className = 'fa-solid fa-spinner fa-spin';
-                indicator.classList.remove('error');
-            } else {
-                icon.className = 'fa-solid fa-check-circle';
-                indicator.classList.remove('error');
-            }
-
-            indicator.classList.add('show');
-
-            if (message !== 'Saving...') {
-                notificationTimer = setTimeout(() => {
-                    indicator.classList.remove('show');
-                }, 1500);
-            }
-        }
-
-        // ==================== AUTH STATE HANDLER ====================
-        auth.onAuthStateChanged(async (user) => {
-            if (!user) {
-                window.location.href = '/login.html';
-                return;
-            }
-
-            uid = user.uid;
-            userData = user;
             
-            // Immediately update profile from auth data
-            updateProfileFromAuth(user);
-            
-            // Load settings from Firestore
-            await loadUserSettings();
-        });
-
-        // ==================== UPDATE PROFILE FROM AUTH ====================
-        function updateProfileFromAuth(user) {
-            const displayName = user.displayName || user.email.split('@')[0];
-            const email = user.email;
-            const photoURL = user.photoURL;
-            
-            // Update profile name and email immediately
-            updateElement('profileName', displayName);
-            updateElement('emailDisplay', `Email: ${email}`);
-            
-            // Update profile photo
-            updateProfilePhoto(photoURL, displayName);
-            
-            hideSkeletons();
-        }
-
-        function updateProfilePhoto(photoURL, displayName) {
-            const avatarEl = document.getElementById('userAvatar');
-            avatarEl.innerHTML = '';
-            
-            if (photoURL) {
-                const img = document.createElement('img');
-                img.className = 'avatar-img';
-                img.src = photoURL;
-                img.alt = displayName;
-                img.onload = () => {
-                    img.classList.add('fade-in');
-                };
-                avatarEl.appendChild(img);
-            } else {
-                // Create fallback with initials
-                const fallback = document.createElement('div');
-                fallback.className = 'avatar-fallback';
-                const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase();
-                fallback.textContent = initials || '🌍';
-                avatarEl.appendChild(fallback);
-            }
-        }
-
-        // ==================== LOAD USER SETTINGS ====================
-        async function loadUserSettings() {
-            if (!uid) return;
-
-            try {
-                const docRef = db.collection("users").doc(uid);
-                
-                // Get document once (faster than real-time listener for initial load)
-                const doc = await docRef.get();
-                
-                if (doc.exists) {
-                    const data = doc.data();
-                    
-                    // Update settings from Firestore
-                    if (data.preferences) {
-                        currentSelection.theme = data.preferences.theme || "System";
-                        currentSelection.appLanguage = data.preferences.appLanguage || "English";
-                        currentSelection.voiceLanguage = data.preferences.voiceLanguage || "English";
-                    }
-                    
-                    if (data.account?.appTone) {
-                        currentSelection.appTone = data.account.appTone;
-                        const toneOption = SETTINGS.appTone.options.find(opt => opt.value === data.account.appTone);
-                        currentSelection.appToneName = toneOption ? toneOption.name : "Aurora Blue";
-                    }
-                    
-                    // Apply settings immediately
-                    applyTheme(currentSelection.theme);
-                    applyColor(currentSelection.appTone);
-                    updateAllDisplays();
-                    
-                    // Set up real-time listener for future updates
-                    setupRealtimeListener(docRef);
-                } else {
-                    // Create new user document
-                    await createNewUserDocument(docRef);
-                }
-                
-            } catch (error) {
-                console.error('Error loading settings:', error);
-                showNotification('Failed to load settings', true);
-            }
-        }
-
-        function setupRealtimeListener(docRef) {
-            // Unsubscribe previous listener if any
-            if (unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-            }
-
-            unsubscribeSnapshot = docRef.onSnapshot((doc) => {
-                if (!doc.exists) return;
-
-                const data = doc.data();
-
-                if (data.preferences) {
-                    currentSelection.theme = data.preferences.theme ?? currentSelection.theme;
-                    currentSelection.appLanguage = data.preferences.appLanguage ?? currentSelection.appLanguage;
-                    currentSelection.voiceLanguage = data.preferences.voiceLanguage ?? currentSelection.voiceLanguage;
-                }
-
-                if (data.account?.appTone) {
-                    currentSelection.appTone = data.account.appTone;
-                    const tone = SETTINGS.appTone.options.find(o => o.value === data.account.appTone);
-                    currentSelection.appToneName = tone?.name ?? currentSelection.appToneName;
-                }
-
-                applyTheme(currentSelection.theme);
-                applyColor(currentSelection.appTone);
-                updateAllDisplays();
-            }, (error) => {
-                console.error('Snapshot error:', error);
-                showNotification('Real-time update failed', true);
-            });
-        }
-
-        async function createNewUserDocument(docRef) {
-            try {
-                await docRef.set({
-                    email: userData.email,
-                    displayName: userData.displayName || userData.email.split('@')[0],
-                    photoURL: userData.photoURL || '',
-                    preferences: {
-                        theme: currentSelection.theme,
-                        appLanguage: currentSelection.appLanguage,
-                        voiceLanguage: currentSelection.voiceLanguage
-                    },
-                    account: {
-                        appTone: currentSelection.appTone
-                    },
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                console.log('New user document created');
-            } catch (error) {
-                console.error('Error creating user document:', error);
-                showNotification('Failed to create profile', true);
-            }
-        }
-
-        // ==================== UPDATE DISPLAY ====================
-        function updateElement(elementId, value) {
-            const element = document.getElementById(elementId);
-            if (!element) return;
-
-            element.innerHTML = '';
-            element.textContent = value;
-            element.classList.add('fade-in');
-        }
-
-        function updateAllDisplays() {
-            updateElement('themeDisplay', currentSelection.theme);
-            updateElement('appLanguageDisplay', currentSelection.appLanguage);
-            updateElement('voiceLanguageDisplay', currentSelection.voiceLanguage);
-            updateElement('appToneDisplay', currentSelection.appToneName);
-        }
-
-        function hideSkeletons() {
-            document.querySelectorAll('.skeleton').forEach(s => s.remove());
-        }
-
-        // ==================== BOTTOM SHEET CONTROLS ====================
-        function openSetting(key) {
-            if (isSheetAnimating) return;
-            
-            currentKey = key;
-            document.getElementById("sheetTitle").textContent = SETTINGS[key].title;
-            const searchInput = document.getElementById("search");
-            searchInput.style.display = SETTINGS[key].search ? "block" : "none";
-            searchInput.value = "";
-            renderOptions(SETTINGS[key].options);
-            
-            const overlay = document.getElementById("overlay");
-            const sheet = document.getElementById("sheet");
-            
-            overlay.classList.add("active");
-            isSheetAnimating = true;
-            
-            requestAnimationFrame(() => {
-                sheet.classList.add("open");
-                setTimeout(() => isSheetAnimating = false, 300);
-            });
-        }
-
-        function closeSheet() {
-            if (isSheetAnimating) return;
-            
-            const sheet = document.getElementById("sheet");
-            const overlay = document.getElementById("overlay");
-            
-            isSheetAnimating = true;
-            sheet.classList.remove("open");
-            
-            setTimeout(() => {
-                overlay.classList.remove("active");
-                isSheetAnimating = false;
-            }, 300);
-        }
-
-        // ==================== RENDER OPTIONS ====================
-        function renderOptions(list) {
-            const box = document.getElementById("options");
-            box.innerHTML = "";
-
-            list.forEach(opt => {
-                const div = document.createElement("div");
-                div.className = "option";
-
-                const value = opt.value || opt;
-                const name = opt.name || opt;
-
-                const isSelected = (currentKey === "appTone")
-                    ? currentSelection.appTone === value
-                    : currentSelection[currentKey] === value;
-
-                if (currentKey === "appTone") {
-                    const colorPreview = document.createElement("div");
-                    colorPreview.className = "color-preview" + (isSelected ? " selected" : "");
-                    colorPreview.style.backgroundColor = value;
-                    div.innerHTML = `<span>${name}</span>`;
-                    div.appendChild(colorPreview);
-                } else {
-                    const radio = document.createElement("div");
-                    radio.className = "radio" + (isSelected ? " selected" : "");
-                    div.innerHTML = `<span>${name}</span>`;
-                    div.appendChild(radio);
-                }
-
-                div.onclick = () => applySetting(value, name);
-                box.appendChild(div);
-            });
-        }
-
-        function filterOptions() {
-            const q = document.getElementById("search").value.toLowerCase();
-            const filtered = SETTINGS[currentKey].options.filter(o =>
-                (o.name || o).toLowerCase().includes(q)
-            );
-            renderOptions(filtered);
-        }
-
-        // ==================== APPLY SETTING ====================
-        let isSaving = false;
-
-        async function applySetting(value, name) {
-            if (isSaving) return;
-            isSaving = true;
-
-            showNotification('Saving...', false);
-
-            const oldValue = currentSelection[currentKey];
-            const oldName = currentKey === "appTone" ? currentSelection.appToneName : null;
-
-            // Optimistically update UI
-            currentSelection[currentKey] = value;
-            if (currentKey === "appTone") {
-                currentSelection.appToneName = name;
-            }
-
-            if (currentKey === "theme") applyTheme(value);
-            if (currentKey === "appTone") applyColor(value);
-
+            applyTheme(currentSelection.theme);
+            applyColor(currentSelection.appTone);
             updateAllDisplays();
-            closeSheet();
+            setupRealtimeListener(docRef);
+        } else {
+            await createNewUserDocument(docRef);
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showNotification('Failed to load settings', true);
+    }
+}
 
-            try {
-                const success = await saveToFirestore(currentKey, value);
+function setupRealtimeListener(docRef) {
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
 
-                if (!success) {
-                    // Revert on failure
-                    currentSelection[currentKey] = oldValue;
-                    if (currentKey === "appTone") {
-                        currentSelection.appToneName = oldName;
-                    }
-                    updateAllDisplays();
-                    if (currentKey === "theme") applyTheme(oldValue);
-                    if (currentKey === "appTone") applyColor(oldValue);
-                    showNotification('Failed to save', true);
-                } else {
-                    showNotification('Saved', false);
-                }
-            } catch (error) {
-                console.error('Unexpected error during save:', error);
-                showNotification('Error', true);
-                // Revert
-                currentSelection[currentKey] = oldValue;
-                if (currentKey === "appTone") {
-                    currentSelection.appToneName = oldName;
-                }
-                updateAllDisplays();
-                if (currentKey === "theme") applyTheme(oldValue);
-                if (currentKey === "appTone") applyColor(oldValue);
-            } finally {
-                isSaving = false;
-            }
+    unsubscribeSnapshot = docRef.onSnapshot((doc) => {
+        if (!doc.exists) return;
+
+        const data = doc.data();
+
+        if (data.preferences) {
+            currentSelection.theme = data.preferences.theme ?? currentSelection.theme;
+            currentSelection.appLanguage = data.preferences.appLanguage ?? currentSelection.appLanguage;
+            currentSelection.voiceLanguage = data.preferences.voiceLanguage ?? currentSelection.voiceLanguage;
         }
 
-        // ==================== SAVE TO FIRESTORE ====================
-        async function saveToFirestore(key, value) {
-            if (!uid) return false;
-
-            try {
-                const docRef = db.collection("users").doc(uid);
-                
-                const updateData = {};
-                
-                if (key === "appTone") {
-                    updateData["account.appTone"] = value;
-                } else {
-                    updateData[`preferences.${key}`] = value;
-                }
-                
-                updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-                
-                await docRef.update(updateData);
-                console.log(`${key} saved successfully`);
-                return true;
-                
-            } catch (error) {
-                console.error('Failed to save:', error);
-                return false;
-            }
+        if (data.account?.appTone) {
+            currentSelection.appTone = data.account.appTone;
+            const tone = SETTINGS.appTone.options.find(o => o.value === data.account.appTone);
+            currentSelection.appToneName = tone?.name ?? currentSelection.appToneName;
         }
 
-        // ==================== THEME & COLOR APPLICATION ====================
-        function applyTheme(value) {
-            if (value === "Dark") {
-                document.body.classList.add("dark");
-            } else if (value === "Light") {
-                document.body.classList.remove("dark");
-            } else {
-                const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-                document.body.classList.toggle("dark", prefersDark);
-            }
-        }
+        applyTheme(currentSelection.theme);
+        applyColor(currentSelection.appTone);
+        updateAllDisplays();
+    });
+}
 
-        function applyColor(color) {
-            document.documentElement.style.setProperty("--primary-color", color);
-        }
-
-        // Listen for system theme changes
-        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        darkModeQuery.addEventListener('change', (e) => {
-            if (currentSelection.theme === "System") {
-                document.body.classList.toggle("dark", e.matches);
-            }
+async function createNewUserDocument(docRef) {
+    try {
+        await docRef.set({
+            email: userData.email || '',
+            displayName: userData.displayName || (userData.email ? userData.email.split('@')[0] : 'User'),
+            photoURL: userData.photoURL || '',
+            preferences: {
+                theme: currentSelection.theme,
+                appLanguage: currentSelection.appLanguage,
+                voiceLanguage: currentSelection.voiceLanguage
+            },
+            account: {
+                appTone: currentSelection.appTone
+            },
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        console.log('New user document created');
+    } catch (error) {
+        console.error('Error creating user document:', error);
+    }
+}
 
-        // ==================== LOGOUT CONFIRMATION ====================
-        function openLogoutConfirm() {
-            document.getElementById('logoutConfirmOverlay').classList.add('active');
+// ==================== UPDATE DISPLAY ====================
+function updateElement(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    element.innerHTML = '';
+    element.textContent = value;
+    element.classList.add('fade-in');
+}
+
+function updateAllDisplays() {
+    updateElement('themeDisplay', currentSelection.theme);
+    updateElement('appLanguageDisplay', currentSelection.appLanguage);
+    updateElement('voiceLanguageDisplay', currentSelection.voiceLanguage);
+    updateElement('appToneDisplay', currentSelection.appToneName);
+}
+
+function hideSkeletons() {
+    document.querySelectorAll('.skeleton').forEach(s => s.remove());
+}
+
+// ==================== BOTTOM SHEET CONTROLS ====================
+function openSetting(key) {
+    if (isSheetAnimating) return;
+    
+    currentKey = key;
+    
+    const sheetTitle = document.getElementById("sheetTitle");
+    const searchInput = document.getElementById("search");
+    const overlay = document.getElementById("overlay");
+    const sheet = document.getElementById("sheet");
+
+    if (!sheetTitle || !searchInput || !overlay || !sheet) return;
+
+    sheetTitle.textContent = SETTINGS[key].title;
+    searchInput.style.display = SETTINGS[key].search ? "block" : "none";
+    searchInput.value = "";
+    
+    renderOptions(SETTINGS[key].options);
+    
+    overlay.classList.add("active");
+    isSheetAnimating = true;
+    
+    requestAnimationFrame(() => {
+        sheet.classList.add("open");
+        setTimeout(() => isSheetAnimating = false, 300);
+    });
+}
+
+function closeSheet() {
+    if (isSheetAnimating) return;
+    
+    const sheet = document.getElementById("sheet");
+    const overlay = document.getElementById("overlay");
+    if (!sheet || !overlay) return;
+    
+    isSheetAnimating = true;
+    sheet.classList.remove("open");
+    
+    setTimeout(() => {
+        overlay.classList.remove("active");
+        isSheetAnimating = false;
+    }, 300);
+}
+
+// ==================== RENDER OPTIONS ====================
+function renderOptions(list) {
+    const box = document.getElementById("options");
+    if (!box) return;
+    
+    box.innerHTML = "";
+
+    list.forEach(opt => {
+        const div = document.createElement("div");
+        div.className = "option";
+
+        const value = opt.value || opt;
+        const name = opt.name || opt;
+
+        const isSelected = (currentKey === "appTone")
+            ? currentSelection.appTone === value
+            : currentSelection[currentKey] === value;
+
+        if (currentKey === "appTone") {
+            const colorPreview = document.createElement("div");
+            colorPreview.className = "color-preview" + (isSelected ? " selected" : "");
+            colorPreview.style.backgroundColor = value;
+            div.innerHTML = `<span>${name}</span>`;
+            div.appendChild(colorPreview);
+        } else {
+            const radio = document.createElement("div");
+            radio.className = "radio" + (isSelected ? " selected" : "");
+            div.innerHTML = `<span>${name}</span>`;
+            div.appendChild(radio);
         }
 
-        function closeLogoutConfirm() {
-            document.getElementById('logoutConfirmOverlay').classList.remove('active');
+        div.onclick = () => applySetting(value, name);
+        box.appendChild(div);
+    });
+}
+
+function filterOptions() {
+    const searchInput = document.getElementById("search");
+    if (!searchInput || !currentKey) return;
+    
+    const q = searchInput.value.toLowerCase();
+    const filtered = SETTINGS[currentKey].options.filter(o =>
+        (o.name || o).toLowerCase().includes(q)
+    );
+    renderOptions(filtered);
+}
+
+// ==================== APPLY SETTING ====================
+async function applySetting(value, name) {
+    if (isSaving) return;
+    isSaving = true;
+
+    showNotification('Saving...', false);
+
+    const oldValue = currentSelection[currentKey];
+
+    currentSelection[currentKey] = value;
+    if (currentKey === "appTone") {
+        currentSelection.appToneName = name;
+    }
+
+    if (currentKey === "theme") applyTheme(value);
+    if (currentKey === "appTone") applyColor(value);
+
+    updateAllDisplays();
+    closeSheet();
+
+    const success = await saveToFirestore(currentKey, value);
+
+    if (!success) {
+        currentSelection[currentKey] = oldValue;
+        updateAllDisplays();
+        if (currentKey === "theme") applyTheme(oldValue);
+        if (currentKey === "appTone") applyColor(oldValue);
+        showNotification('Failed to save', true);
+    } else {
+        showNotification('Saved', false);
+    }
+
+    isSaving = false;
+}
+
+// ==================== SAVE TO FIRESTORE ====================
+async function saveToFirestore(key, value) {
+    if (!uid) return false;
+
+    try {
+        const docRef = db.collection("users").doc(uid);
+        const updateData = {};
+        
+        if (key === "appTone") {
+            updateData["account.appTone"] = value;
+        } else {
+            updateData[`preferences.${key}`] = value;
         }
+        
+        updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+        
+        await docRef.update(updateData);
+        return true;
+    } catch (error) {
+        console.error('Failed to save:', error);
+        return false;
+    }
+}
 
-        async function confirmLogout() {
-            closeLogoutConfirm();
-            
-            try {
-                // Clean up listeners
-                if (unsubscribeSnapshot) {
-                    unsubscribeSnapshot();
-                    unsubscribeSnapshot = null;
-                }
-                
-                await auth.signOut();
-                window.location.href = '/login.html';
-            } catch (error) {
-                console.error('Logout error:', error);
-                showNotification('Failed to logout', true);
-            }
+// ==================== THEME & COLOR APPLICATION ====================
+function applyTheme(value) {
+    if (value === "Dark") {
+        document.body.classList.add("dark");
+    } else if (value === "Light") {
+        document.body.classList.remove("dark");
+    } else {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.body.classList.toggle("dark", prefersDark);
+    }
+}
+
+function applyColor(color) {
+    document.documentElement.style.setProperty("--primary-color", color);
+}
+
+// Listen for system theme changes
+const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+darkModeQuery.addEventListener('change', (e) => {
+    if (currentSelection.theme === "System") {
+        document.body.classList.toggle("dark", e.matches);
+    }
+});
+
+// ==================== LOGOUT CONFIRMATION ====================
+function openLogoutConfirm() {
+    document.getElementById('logoutConfirmOverlay')?.classList.add('active');
+}
+
+function closeLogoutConfirm() {
+    document.getElementById('logoutConfirmOverlay')?.classList.remove('active');
+}
+
+async function confirmLogout() {
+    closeLogoutConfirm();
+    
+    try {
+        if (unsubscribeSnapshot) {
+            unsubscribeSnapshot();
+            unsubscribeSnapshot = null;
         }
+        
+        await auth.signOut();
+        window.location.href = '/login.html';
+    } catch (error) {
+        console.error('Logout error:', error);
+        showNotification('Failed to logout', true);
+    }
+}
 
-        // ==================== UTILITY FUNCTIONS ====================
-        function openLegal(type) {
-            const urls = {
-                terms: 'https://mentormindz.com/terms',
-                privacy: 'https://mentormindz.com/privacy'
-            };
-            window.open(urls[type], '_blank');
-        }
+// ==================== UTILITY FUNCTIONS ====================
+function openLegal(type) {
+    const urls = {
+        terms: 'https://mentormindz.com/terms',
+        privacy: 'https://mentormindz.com/privacy'
+    };
+    if (urls[type]) window.open(urls[type], '_blank');
+}
 
-        function goBack() {
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = 'home.html';
-            }
-        }
+function goBack() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        window.location.href = 'home.html';
+    }
+}
 
-        // ==================== CLEANUP ====================
-        window.addEventListener('beforeunload', () => {
-            if (unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-            }
-        });
+// ==================== CLEANUP & EVENT LISTENERS ====================
+window.addEventListener('beforeunload', () => {
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
+});
 
-        // ==================== ERROR HANDLING ====================
-        window.addEventListener('error', (e) => {
-            console.error('Global error:', e.error);
-        });
+window.addEventListener('error', (e) => {
+    console.error('Global error:', e.error);
+});
 
-        window.addEventListener('unhandledrejection', (e) => {
-            console.error('Unhandled promise rejection:', e.reason);
-        });
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection:', e.reason);
+});
 
-        // ==================== PREVENT SHEET CLOSING ====================
-        document.getElementById('sheet').addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
+// Prevent bottom sheet from closing when clicking inside it
+document.addEventListener('DOMContentLoaded', () => {
+    const sheet = document.getElementById('sheet');
+    if (sheet) {
+        sheet.addEventListener('click', (e) => e.stopPropagation());
+    }
+});
     </script>
 </body>
 </html>
