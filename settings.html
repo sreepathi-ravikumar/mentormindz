@@ -822,38 +822,38 @@
 
         let notificationTimer = null;
 
-function showNotification(message, isError = false) {
-    const indicator = document.getElementById('savingIndicator');
-    const text = document.getElementById('savingText');
-    const icon = indicator.querySelector('i');
+        // ==================== NOTIFICATION SYSTEM (single definition) ====================
+        function showNotification(message, isError = false) {
+            const indicator = document.getElementById('savingIndicator');
+            const text = document.getElementById('savingText');
+            const icon = indicator.querySelector('i');
 
-    if (notificationTimer) {
-        clearTimeout(notificationTimer);
-        notificationTimer = null;
-    }
+            if (notificationTimer) {
+                clearTimeout(notificationTimer);
+                notificationTimer = null;
+            }
 
-    text.textContent = message;
+            text.textContent = message;
 
-    if (isError) {
-        icon.className = 'fa-solid fa-exclamation-circle';
-        indicator.classList.add('error');
-    } else if (message === 'Saving...') {
-        icon.className = 'fa-solid fa-spinner fa-spin';
-        indicator.classList.remove('error');
-    } else {
-        icon.className = 'fa-solid fa-check-circle';
-        indicator.classList.remove('error');
-    }
+            if (isError) {
+                icon.className = 'fa-solid fa-exclamation-circle';
+                indicator.classList.add('error');
+            } else if (message === 'Saving...') {
+                icon.className = 'fa-solid fa-spinner fa-spin';
+                indicator.classList.remove('error');
+            } else {
+                icon.className = 'fa-solid fa-check-circle';
+                indicator.classList.remove('error');
+            }
 
-    indicator.classList.add('show');
+            indicator.classList.add('show');
 
-    if (message !== 'Saving...') {
-        notificationTimer = setTimeout(() => {
-            indicator.classList.remove('show');
-        }, 1500);
-    }
-}
-
+            if (message !== 'Saving...') {
+                notificationTimer = setTimeout(() => {
+                    indicator.classList.remove('show');
+                }, 1500);
+            }
+        }
 
         // ==================== AUTH STATE HANDLER ====================
         auth.onAuthStateChanged(async (user) => {
@@ -956,31 +956,36 @@ function showNotification(message, isError = false) {
         }
 
         function setupRealtimeListener(docRef) {
-    if (unsubscribeSnapshot) unsubscribeSnapshot();
+            // Unsubscribe previous listener if any
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+            }
 
-    unsubscribeSnapshot = docRef.onSnapshot((doc) => {
-        if (!doc.exists) return;
+            unsubscribeSnapshot = docRef.onSnapshot((doc) => {
+                if (!doc.exists) return;
 
-        const data = doc.data();
+                const data = doc.data();
 
-        if (data.preferences) {
-            currentSelection.theme = data.preferences.theme ?? currentSelection.theme;
-            currentSelection.appLanguage = data.preferences.appLanguage ?? currentSelection.appLanguage;
-            currentSelection.voiceLanguage = data.preferences.voiceLanguage ?? currentSelection.voiceLanguage;
+                if (data.preferences) {
+                    currentSelection.theme = data.preferences.theme ?? currentSelection.theme;
+                    currentSelection.appLanguage = data.preferences.appLanguage ?? currentSelection.appLanguage;
+                    currentSelection.voiceLanguage = data.preferences.voiceLanguage ?? currentSelection.voiceLanguage;
+                }
+
+                if (data.account?.appTone) {
+                    currentSelection.appTone = data.account.appTone;
+                    const tone = SETTINGS.appTone.options.find(o => o.value === data.account.appTone);
+                    currentSelection.appToneName = tone?.name ?? currentSelection.appToneName;
+                }
+
+                applyTheme(currentSelection.theme);
+                applyColor(currentSelection.appTone);
+                updateAllDisplays();
+            }, (error) => {
+                console.error('Snapshot error:', error);
+                showNotification('Real-time update failed', true);
+            });
         }
-
-        if (data.account?.appTone) {
-            currentSelection.appTone = data.account.appTone;
-            const tone = SETTINGS.appTone.options.find(o => o.value === data.account.appTone);
-            currentSelection.appToneName = tone?.name ?? currentSelection.appToneName;
-        }
-
-        applyTheme(currentSelection.theme);
-        applyColor(currentSelection.appTone);
-        updateAllDisplays();
-    });
-}
-
 
         async function createNewUserDocument(docRef) {
             try {
@@ -1001,6 +1006,7 @@ function showNotification(message, isError = false) {
                 console.log('New user document created');
             } catch (error) {
                 console.error('Error creating user document:', error);
+                showNotification('Failed to create profile', true);
             }
         }
 
@@ -1022,9 +1028,8 @@ function showNotification(message, isError = false) {
         }
 
         function hideSkeletons() {
-    document.querySelectorAll('.skeleton').forEach(s => s.remove());
-}
-
+            document.querySelectorAll('.skeleton').forEach(s => s.remove());
+        }
 
         // ==================== BOTTOM SHEET CONTROLS ====================
         function openSetting(key) {
@@ -1109,40 +1114,58 @@ function showNotification(message, isError = false) {
         // ==================== APPLY SETTING ====================
         let isSaving = false;
 
-async function applySetting(value, name) {
-    if (isSaving) return;
-    isSaving = true;
+        async function applySetting(value, name) {
+            if (isSaving) return;
+            isSaving = true;
 
-    showNotification('Saving...', false);
+            showNotification('Saving...', false);
 
-    const oldValue = currentSelection[currentKey];
+            const oldValue = currentSelection[currentKey];
+            const oldName = currentKey === "appTone" ? currentSelection.appToneName : null;
 
-    currentSelection[currentKey] = value;
-    if (currentKey === "appTone") {
-        currentSelection.appToneName = name;
-    }
+            // Optimistically update UI
+            currentSelection[currentKey] = value;
+            if (currentKey === "appTone") {
+                currentSelection.appToneName = name;
+            }
 
-    if (currentKey === "theme") applyTheme(value);
-    if (currentKey === "appTone") applyColor(value);
+            if (currentKey === "theme") applyTheme(value);
+            if (currentKey === "appTone") applyColor(value);
 
-    updateAllDisplays();
-    closeSheet();
+            updateAllDisplays();
+            closeSheet();
 
-    const success = await saveToFirestore(currentKey, value);
+            try {
+                const success = await saveToFirestore(currentKey, value);
 
-    if (!success) {
-        currentSelection[currentKey] = oldValue;
-        updateAllDisplays();
-        if (currentKey === "theme") applyTheme(oldValue);
-        if (currentKey === "appTone") applyColor(oldValue);
-        showNotification('Failed to save', true);
-    } else {
-        showNotification('Saved', false);
-    }
-
-    isSaving = false;
-}
-
+                if (!success) {
+                    // Revert on failure
+                    currentSelection[currentKey] = oldValue;
+                    if (currentKey === "appTone") {
+                        currentSelection.appToneName = oldName;
+                    }
+                    updateAllDisplays();
+                    if (currentKey === "theme") applyTheme(oldValue);
+                    if (currentKey === "appTone") applyColor(oldValue);
+                    showNotification('Failed to save', true);
+                } else {
+                    showNotification('Saved', false);
+                }
+            } catch (error) {
+                console.error('Unexpected error during save:', error);
+                showNotification('Error', true);
+                // Revert
+                currentSelection[currentKey] = oldValue;
+                if (currentKey === "appTone") {
+                    currentSelection.appToneName = oldName;
+                }
+                updateAllDisplays();
+                if (currentKey === "theme") applyTheme(oldValue);
+                if (currentKey === "appTone") applyColor(oldValue);
+            } finally {
+                isSaving = false;
+            }
+        }
 
         // ==================== SAVE TO FIRESTORE ====================
         async function saveToFirestore(key, value) {
@@ -1168,34 +1191,6 @@ async function applySetting(value, name) {
             } catch (error) {
                 console.error('Failed to save:', error);
                 return false;
-            }
-        }
-
-        // ==================== NOTIFICATION SYSTEM ====================
-        function showNotification(message, isError = false) {
-            const indicator = document.getElementById('savingIndicator');
-            const text = document.getElementById('savingText');
-            const icon = indicator.querySelector('i');
-            
-            text.textContent = message;
-            
-            if (isError) {
-                indicator.classList.add('error');
-                icon.className = 'fa-solid fa-exclamation-circle';
-            } else if (message === 'Saving...') {
-                icon.className = 'fa-solid fa-spinner fa-spin';
-                indicator.classList.remove('error');
-            } else {
-                icon.className = 'fa-solid fa-check-circle';
-                indicator.classList.remove('error');
-            }
-            
-            indicator.classList.add('show');
-            
-            if (message !== 'Saving...') {
-                setTimeout(() => {
-                    indicator.classList.remove('show');
-                }, 1500);
             }
         }
 
